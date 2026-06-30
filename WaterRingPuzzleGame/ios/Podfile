@@ -1,0 +1,65 @@
+# Resolve react_native_pods.rb with node to allow for hoisting
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
+
+platform :ios, min_ios_version_supported
+prepare_react_native_project!
+
+linkage = ENV['USE_FRAMEWORKS']
+if linkage != nil
+  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  use_frameworks! :linkage => linkage.to_sym
+end
+
+target 'WaterRingPuzzleGame' do
+  config = use_native_modules!
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    # Disable Flipper — Firebase and Skia both have conflicts with Flipper
+    :flipper_configuration => FlipperConfiguration.disabled,
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  # ── React Navigation ──────────────────────────────────────────────────────
+  # Handled automatically by use_native_modules!
+  # react-native-screens, react-native-safe-area-context, react-native-gesture-handler
+
+  # ── Skia GPU rendering ────────────────────────────────────────────────────
+  # @shopify/react-native-skia is auto-linked via use_native_modules!
+
+  # ── Firebase ─────────────────────────────────────────────────────────────
+  # GoogleService-Info.plist is placed at ios/WaterRingPuzzleGame/GoogleService-Info.plist
+  # All Firebase pods are auto-linked by @react-native-firebase via use_native_modules!
+  # No manual pod entries needed.
+
+  # ── Audio ─────────────────────────────────────────────────────────────────
+  # react-native-sound is auto-linked via use_native_modules!
+
+  target 'WaterRingPuzzleGameTests' do
+    inherit! :complete
+    # Pods for testing
+  end
+
+  post_install do |installer|
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false
+    )
+
+    # ── Fix Xcode 15 / Swift interop issues ───────────────────────────────
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.4'
+        # Required for react-native-reanimated worklets
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)', 'FOLLY_NO_CONFIG', 'FOLLY_MOBILE=1', 'FOLLY_USE_LIBCPP=1', '_LIBCPP_ENABLE_CXX17_REMOVED_UNARY_BINARY_FUNCTION']
+        # Suppress warnings treated as errors in CI
+        config.build_settings['SWIFT_VERSION'] = '5.0'
+      end
+    end
+  end
+end

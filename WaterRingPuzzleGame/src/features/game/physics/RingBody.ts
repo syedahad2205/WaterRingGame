@@ -69,7 +69,7 @@ const RING_FRICTION_AIR = 0.015;
 const RING_ANGULAR_DAMPING = 0.01;
 
 /** Default linear (translation) damping for ring bodies. */
-const RING_LINEAR_DAMPING = 0.01;
+// const RING_LINEAR_DAMPING = 0.01; // unused
 
 // ---------------------------------------------------------------------------
 // Typed plugin metadata stored on body.plugin

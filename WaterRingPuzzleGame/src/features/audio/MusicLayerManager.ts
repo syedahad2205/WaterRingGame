@@ -68,9 +68,6 @@ interface StemTrackState {
 /** Stem names in declaration order. */
 const STEM_NAMES: StemName[] = ['base', 'texture', 'rhythm', 'melody', 'counter', 'intensity'];
 
-/** Number of fade steps per fade operation. */
-const FADE_STEPS = 20;
-
 /** Minimum interval between fade steps (ms). */
 const FADE_STEP_INTERVAL_MS = 16; // ~60 fps
 
@@ -107,7 +104,7 @@ function clamp(v: number): number {
  * TODO: Wire the TODO sections to react-native-track-player once assets land.
  */
 export class MusicLayerManager {
-  private _initialized: boolean = false;
+  private _initialized = false;
   private _activeThemeId: string | null = null;
   private _stemStates: Map<string, StemTrackState> = new Map();
 
@@ -419,6 +416,6 @@ export class MusicLayerManager {
    * Safe in both RN and test environments.
    */
   private _delay(ms: number): Promise<void> {
-    return new Promise<void>((resolve) => setTimeout(resolve, ms));
+    return new Promise<void>((resolve) => { setTimeout(resolve, ms); });
   }
 }

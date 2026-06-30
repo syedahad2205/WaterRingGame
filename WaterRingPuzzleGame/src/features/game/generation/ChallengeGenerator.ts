@@ -118,6 +118,7 @@ interface Zone {
  * @param minDist   Minimum distance between any two points.
  * @param prng      Seeded PRNG (deterministic).
  */
+// eslint-disable-next-line max-lines-per-function
 function poissonDisk(
   count: number,
   zone: Zone,
@@ -199,6 +200,7 @@ function poissonDisk(
 
 // ─── Step 5: Build Pegs ──────────────────────────────────────────────────────
 
+// eslint-disable-next-line max-lines-per-function
 function buildPegs(
   d: number,
   nd: number,
@@ -226,7 +228,7 @@ function buildPegs(
   };
 
   // Run Poisson disk with full minSeparation.
-  let positions = poissonDisk(count, zone, minSeparation, prng);
+  const positions = poissonDisk(count, zone, minSeparation, prng);
 
   // Guarantee at least 2 pegs. If Poisson failed to produce 2, relax separation
   // by 50% and run a simple random fill that respects the relaxed distance.
@@ -264,6 +266,7 @@ function buildPegs(
 
 // ─── Step 6: Build Rings ─────────────────────────────────────────────────────
 
+// eslint-disable-next-line max-lines-per-function
 function buildRings(
   d: number,
   pegs: PegConfig[],
@@ -389,7 +392,7 @@ function buildWaterCurrentProfile(
   nd: number,
   template: { currentMultiplier: number },
   prng: ReturnType<typeof deriveMasterSeed>,
-) {
+): { ambientForce: number; turbulenceIntensity: number; variationPattern: number } {
   const ambientForce = nd * 0.05 * template.currentMultiplier * (prng.nextFloat() * 2 - 1);
   const turbulenceIntensity = 0.3 + nd * 0.5;
   const variationPattern = prng.nextInt(0, 7);
@@ -399,7 +402,7 @@ function buildWaterCurrentProfile(
 
 // ─── Step 9: Timer ────────────────────────────────────────────────────────────
 
-function buildTimerConfig(d: number, template: { timerMultiplier: number }) {
+function buildTimerConfig(d: number, template: { timerMultiplier: number }): { totalSeconds: number; amberThresholdSecs: number; criticalThresholdSecs: number } {
   const totalSeconds = timerBase(d) * template.timerMultiplier;
   const amberThresholdSecs = totalSeconds * 0.3;
   const criticalThresholdSecs = totalSeconds * 0.1;
@@ -411,7 +414,7 @@ function buildTimerConfig(d: number, template: { timerMultiplier: number }) {
 function buildPhysicsModifiers(template: {
   gravityMultiplier: number;
   id: string;
-}) {
+}): { gravityScale: number; waterViscosity: number; buoyancyMultiplier: number } {
   const gravityScale = template.gravityMultiplier;
   // HeavyRings → higher viscosity; LightRings → lower (not in 24 templates but handled gracefully)
   const waterViscosity =
@@ -424,14 +427,15 @@ function buildPhysicsModifiers(template: {
 
 // ─── Step 12: Challenge Intelligence Metadata ────────────────────────────────
 
+// eslint-disable-next-line max-lines-per-function
 function buildIntelligenceMetadata(
-  d: number,
+  _d: number,
   nd: number,
   timer: { totalSeconds: number },
   template: { id: string },
   pegs: PegConfig[],
   rings: RingConfig[],
-) {
+): { estimatedSolveTimeSecs: number; successfulSolverStrategies: number[]; qualityScore: number; difficultyDrivers: string[] } {
   const predictedSolveTime = timer.totalSeconds * 0.6;
   // Placeholder until task 6.4.1 (ValidationSolver) is implemented.
   const successfulSolverStrategies = [0, 1];
@@ -489,6 +493,7 @@ function buildIntelligenceMetadata(
  * @param isBoss          True if N is a multiple of 50.
  * @param isDaily         True when generating a daily challenge.
  */
+// eslint-disable-next-line max-lines-per-function
 function runPipeline(
   prng: ReturnType<typeof deriveMasterSeed>,
   challengeNumber: number,

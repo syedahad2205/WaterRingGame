@@ -6,13 +6,16 @@
  */
 
 import React from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Providers from './Providers';
 import Navigation from './Navigation';
 
 export default function App(): JSX.Element {
   return (
-    <Providers>
-      <Navigation />
-    </Providers>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Providers>
+        <Navigation />
+      </Providers>
+    </GestureHandlerRootView>
   );
 }

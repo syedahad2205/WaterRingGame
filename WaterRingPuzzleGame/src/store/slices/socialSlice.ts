@@ -67,6 +67,7 @@ const defaultSocialState: SocialState = {
 
 export const useSocialStore = create<SocialStore>()(
   persist(
+    // eslint-disable-next-line max-lines-per-function
     (set) => ({
       ...defaultSocialState,
 

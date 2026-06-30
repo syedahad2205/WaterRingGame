@@ -111,7 +111,7 @@ function getSFXFilePath(event: SFXEventName): string {
   let ext = 'm4a'; // iOS default
   try {
     // Dynamic require to prevent crash when react-native is not available
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
     const { Platform } = require('react-native') as { Platform: { OS: string } };
     if (Platform.OS === 'android') {
       ext = 'ogg';
@@ -166,7 +166,7 @@ const SFX_DEFAULT_VOLUMES: Record<SFXEventName, number> = {
  * Requirements: 14.1, 8.1
  */
 export class SFXManager {
-  private _masterVolume: number = 1.0;
+  private _masterVolume = 1.0;
 
   /**
    * Set of SFX event names that have been queued for preloading.

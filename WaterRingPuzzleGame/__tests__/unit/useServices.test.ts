@@ -29,6 +29,15 @@ jest.mock('react-native-safe-area-context', () => ({
   SafeAreaProvider: ({ children }: { children: unknown }) => children,
 }));
 
+jest.mock('@react-native-firebase/analytics', () => () => ({
+  logEvent: jest.fn(() => Promise.resolve()),
+  setUserId: jest.fn(() => Promise.resolve()),
+  setUserProperties: jest.fn(() => Promise.resolve()),
+}));
+jest.mock('@react-native-firebase/crashlytics', () => () => ({
+  recordError: jest.fn(),
+  setAttributes: jest.fn(),
+}));
 jest.mock('@react-native-firebase/auth', () => () => ({
   useEmulator: jest.fn(),
 }));
@@ -44,6 +53,32 @@ jest.mock('@react-native-firebase/storage', () => () => ({
 
 jest.mock('react-native', () => ({
   Platform: { OS: 'ios' },
+  NativeModules: {},
+  NativeEventEmitter: jest.fn().mockImplementation(() => ({ addListener: jest.fn(), removeAllListeners: jest.fn() })),
+  AppState: { addEventListener: jest.fn(() => ({ remove: jest.fn() })), currentState: 'active' },
+}));
+
+jest.mock('react-native-mmkv', () => ({
+  MMKV: jest.fn().mockImplementation(() => ({
+    getString: jest.fn().mockReturnValue(null),
+    set: jest.fn(),
+    delete: jest.fn(),
+  })),
+}));
+
+jest.mock('../../src/services/storage/MMKVStorage', () => ({
+  mmkv: { getString: jest.fn(), set: jest.fn(), delete: jest.fn() },
+  createSliceMMKVStorage: jest.fn(() => ({ getItem: jest.fn(() => null), setItem: jest.fn(), removeItem: jest.fn() })),
+  getItem: jest.fn().mockReturnValue(null),
+  setItem: jest.fn(),
+}));
+
+jest.mock('../../src/utils/GameEventEmitter', () => ({
+  gameEventEmitter: { on: jest.fn(), off: jest.fn(), emit: jest.fn(), subscribe: jest.fn(() => jest.fn()) },
+}));
+
+jest.mock('crypto-js', () => ({
+  HmacSHA256: jest.fn(() => ({ toString: () => 'mock-hmac' })),
 }));
 
 jest.mock('react-native-haptic-feedback', () => ({

@@ -121,3 +121,64 @@ export async function runBenchmark(): Promise<DeviceTier> {
   cacheTier(tier);
   return tier;
 }
+
+// ---------------------------------------------------------------------------
+// FrameRateController — Epic 18 Task 18.2.2
+// ---------------------------------------------------------------------------
+
+/**
+ * FrameRateController — Epic 18 Task 18.2.2
+ *
+ * Monitors rolling average frame time and auto-downgrades to 30fps
+ * when 60fps cannot be sustained.
+ * Trigger: P10 frame time > 14ms for 3 consecutive seconds.
+ *
+ * Requirements: 42.6, 24.2
+ */
+const DOWNGRADE_THRESHOLD_MS = 14;
+const DOWNGRADE_WINDOW_FRAMES = 180; // ~3s at 60fps
+const RESTORE_THRESHOLD_MS = 12;
+// const RESTORE_WINDOW_FRAMES = 300; // ~5s at 60fps — unused
+
+export class FrameRateController {
+  private frameTimes: number[] = [];
+  private currentTarget: 60 | 30 = 60;
+  private onDowngrade?: (target: 30 | 60) => void;
+
+  constructor(onTargetChange?: (target: 30 | 60) => void) {
+    this.onDowngrade = onTargetChange;
+  }
+
+  /** Record a frame time (called each tick). */
+  recordFrameTime(dtMs: number): void {
+    this.frameTimes.push(dtMs);
+    if (this.frameTimes.length > DOWNGRADE_WINDOW_FRAMES) {
+      this.frameTimes.shift();
+    }
+    this.evaluate();
+  }
+
+  private evaluate(): void {
+    if (this.frameTimes.length < DOWNGRADE_WINDOW_FRAMES) return;
+
+    const sorted = [...this.frameTimes].sort((a, b) => a - b);
+    const p10Index = Math.floor(sorted.length * 0.1);
+    const p10 = sorted[p10Index];
+
+    if (this.currentTarget === 60 && p10 > DOWNGRADE_THRESHOLD_MS) {
+      this.currentTarget = 30;
+      this.onDowngrade?.(30);
+    } else if (this.currentTarget === 30 && p10 < RESTORE_THRESHOLD_MS) {
+      this.currentTarget = 60;
+      this.onDowngrade?.(60);
+    }
+  }
+
+  getCurrentTarget(): 60 | 30 { return this.currentTarget; }
+  reset(): void { this.frameTimes = []; this.currentTarget = 60; }
+  getP10FrameTime(): number {
+    if (this.frameTimes.length === 0) return 0;
+    const sorted = [...this.frameTimes].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length * 0.1)];
+  }
+}

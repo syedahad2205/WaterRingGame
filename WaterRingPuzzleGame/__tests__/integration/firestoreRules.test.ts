@@ -31,6 +31,14 @@ const RULES_PATH = path.resolve(__dirname, '../../firestore.rules');
 // Allow extra time for emulator connections (30 seconds per test)
 jest.setTimeout(30000);
 
+// Skip all tests when the Firestore emulator is not running.
+// Run with: FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 jest --testPathPattern=firestoreRules
+const EMULATOR_RUNNING = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+if (!EMULATOR_RUNNING) {
+  // eslint-disable-next-line no-console
+  console.warn('[firestoreRules] Firestore emulator not running — skipping all tests. Set FIRESTORE_EMULATOR_HOST to enable.');
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Load rules from the project root firestore.rules file. */
@@ -43,6 +51,7 @@ function loadRules(): string {
 let testEnv: RulesTestEnvironment;
 
 beforeAll(async () => {
+  if (!EMULATOR_RUNNING) return;
   testEnv = await initializeTestEnvironment({
     projectId: PROJECT_ID,
     firestore: {
@@ -54,16 +63,18 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  if (!EMULATOR_RUNNING || !testEnv) return;
   await testEnv.cleanup();
 });
 
 afterEach(async () => {
+  if (!EMULATOR_RUNNING || !testEnv) return;
   await testEnv.clearFirestore();
 });
 
 // ─── Requirement 26.7: All reads/writes require a valid Firebase Auth token ────
 
-describe('Req 26.7 — Unauthenticated access is always denied', () => {
+(EMULATOR_RUNNING ? describe : describe.skip)('Req 26.7 — Unauthenticated access is always denied', () => {
   it('denies unauthenticated read of a player document', async () => {
     const unauthed = testEnv.unauthenticatedContext();
     await assertFails(unauthed.firestore().doc('players/alice').get());
@@ -98,10 +109,10 @@ describe('Req 26.7 — Unauthenticated access is always denied', () => {
 
 // ─── Requirement 26.3: /players/{userId} — owner read/write only ──────────────
 
-describe('Req 26.3 — /players/{userId}: owner read/write only', () => {
+(EMULATOR_RUNNING ? describe : describe.skip)('Req 26.3 — /players/{userId}: owner read/write only', () => {
   beforeEach(async () => {
     // Seed a player document using admin access (bypasses rules)
-    await testEnv.withSecurityRulesDisabled(async ctx => {
+    await testEnv.withSecurityRulesDisabled(async (ctx: any) => {
       await ctx
         .firestore()
         .doc('players/alice')
@@ -136,9 +147,9 @@ describe('Req 26.3 — /players/{userId}: owner read/write only', () => {
 
 // ─── Requirement 26.3: /players/{userId}/challenges/{N} ───────────────────────
 
-describe('Req 26.3 — /players/{userId}/challenges/{N}: owner only', () => {
+(EMULATOR_RUNNING ? describe : describe.skip)('Req 26.3 — /players/{userId}/challenges/{N}: owner only', () => {
   beforeEach(async () => {
-    await testEnv.withSecurityRulesDisabled(async ctx => {
+    await testEnv.withSecurityRulesDisabled(async (ctx: any) => {
       await ctx
         .firestore()
         .doc('players/alice/challenges/1')
@@ -180,9 +191,9 @@ describe('Req 26.3 — /players/{userId}/challenges/{N}: owner only', () => {
 
 // ─── Requirement 26.3: /players/{userId}/mastery/{templateId} ─────────────────
 
-describe('Req 26.3 — /players/{userId}/mastery/{templateId}: owner only', () => {
+(EMULATOR_RUNNING ? describe : describe.skip)('Req 26.3 — /players/{userId}/mastery/{templateId}: owner only', () => {
   beforeEach(async () => {
-    await testEnv.withSecurityRulesDisabled(async ctx => {
+    await testEnv.withSecurityRulesDisabled(async (ctx: any) => {
       await ctx
         .firestore()
         .doc('players/alice/mastery/classic')
@@ -208,9 +219,9 @@ describe('Req 26.3 — /players/{userId}/mastery/{templateId}: owner only', () =
 // ─── Requirement 26.4: /leaderboards/{id}/entries/{userId} ────────────────────
 // Readable by all authenticated users; NO client writes.
 
-describe('Req 26.4 — /leaderboards/: authenticated read, no client writes', () => {
+(EMULATOR_RUNNING ? describe : describe.skip)('Req 26.4 — /leaderboards/: authenticated read, no client writes', () => {
   beforeEach(async () => {
-    await testEnv.withSecurityRulesDisabled(async ctx => {
+    await testEnv.withSecurityRulesDisabled(async (ctx: any) => {
       await ctx
         .firestore()
         .doc('leaderboards/global/entries/alice')
@@ -263,9 +274,9 @@ describe('Req 26.4 — /leaderboards/: authenticated read, no client writes', ()
 // ─── Requirement 26.5: /economy/{txId} ────────────────────────────────────────
 // Readable only by the transaction owner; NO client writes.
 
-describe('Req 26.5 — /economy/{txId}: owner read only, no client writes', () => {
+(EMULATOR_RUNNING ? describe : describe.skip)('Req 26.5 — /economy/{txId}: owner read only, no client writes', () => {
   beforeEach(async () => {
-    await testEnv.withSecurityRulesDisabled(async ctx => {
+    await testEnv.withSecurityRulesDisabled(async (ctx: any) => {
       await ctx
         .firestore()
         .doc('economy/tx-001')
@@ -321,9 +332,9 @@ describe('Req 26.5 — /economy/{txId}: owner read only, no client writes', () =
 // ─── Requirement 26.6: /challenge_intelligence/{N} ────────────────────────────
 // Readable by all authenticated users; NO client writes.
 
-describe('Req 26.6 — /challenge_intelligence: authenticated read, no client writes', () => {
+(EMULATOR_RUNNING ? describe : describe.skip)('Req 26.6 — /challenge_intelligence: authenticated read, no client writes', () => {
   beforeEach(async () => {
-    await testEnv.withSecurityRulesDisabled(async ctx => {
+    await testEnv.withSecurityRulesDisabled(async (ctx: any) => {
       await ctx
         .firestore()
         .doc('challenge_intelligence/42')
@@ -365,7 +376,7 @@ describe('Req 26.6 — /challenge_intelligence: authenticated read, no client wr
 
 // ─── Catch-all: deny all other paths ──────────────────────────────────────────
 
-describe('Catch-all — all other paths are denied', () => {
+(EMULATOR_RUNNING ? describe : describe.skip)('Catch-all — all other paths are denied', () => {
   it('denies authenticated read of an arbitrary top-level collection', async () => {
     const alice = testEnv.authenticatedContext('alice');
     await assertFails(alice.firestore().doc('unknown_collection/doc1').get());

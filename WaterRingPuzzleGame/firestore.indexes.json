@@ -1,5 +1,21 @@
 {
-  "indexes": [],
-  "fieldOverrides": [],
-  "_comment": "PLACEHOLDER — Firestore composite indexes will be added here as needed during development."
+  "indexes": [
+    {
+      "collectionGroup": "scores",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "challengeNumber", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
 }

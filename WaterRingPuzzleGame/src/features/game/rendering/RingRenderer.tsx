@@ -14,6 +14,7 @@
  */
 
 import React from 'react';
+import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import {
   Canvas,
   Circle,
@@ -69,6 +70,10 @@ const SETTLED_GLOW_COLOR = '#FFFFFF'; // white pulse
 // ---------------------------------------------------------------------------
 // Animation helpers
 // ---------------------------------------------------------------------------
+
+// Spring config for ring landing animation (used by drag-drop physics integration)
+const LANDING_SPRING_STIFFNESS = 300;
+const LANDING_SPRING_DAMPING = 25;
 
 const GLOW_FREQUENCY = 1.5; // Hz
 
@@ -134,6 +139,7 @@ interface RingSingleProps {
   t: number;
 }
 
+// eslint-disable-next-line max-lines-per-function
 function RingSingle({ ring, t }: RingSingleProps): React.JSX.Element {
   const { x, y, outerRadius, innerRadius, colorId, isSettled, isNearPeg } = ring;
 

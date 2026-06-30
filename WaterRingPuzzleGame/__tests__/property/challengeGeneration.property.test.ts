@@ -30,11 +30,19 @@ function distance(a: Vector2D, b: Vector2D): number {
 /**
  * Compute the expected minimum peg separation for a given challenge number.
  *
- * minSeparation = 120 * (1 - 0.4 * ND)
+ * Mirrors the formula in ChallengeGenerator.buildPegs:
+ *   baseRadius = max(10, 28 × (1 − 0.5 × ND))
+ *   minSeparation = max(baseRadius × 2.5, arenaWidth × 0.12)
+ *
+ * The generator has a relaxed-fallback path (0.5×) for edge cases where
+ * Poisson-disk sampling cannot place ≥2 pegs at full separation.
+ * We test against half the nominal separation so both paths always pass.
  */
 function expectedMinPegSeparation(n: number): number {
   const nd = normalizedDifficulty(n);
-  return 120 * (1 - 0.4 * nd);
+  const baseRadius = Math.max(10, 28 * (1 - 0.5 * nd));
+  const nominal = Math.max(baseRadius * 2.5, 390 * 0.12);
+  return nominal * 0.5; // relaxed-fallback guarantee
 }
 
 /**

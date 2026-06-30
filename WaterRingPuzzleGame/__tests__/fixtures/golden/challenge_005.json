@@ -1,0 +1,30 @@
+{
+  "challengeNumber": 5,
+  "seed": "golden_005",
+  "difficulty": 0.00,
+  "rings": [
+      {
+        "id": "ring_1",
+        "colorId": "red",
+        "size": "medium",
+        "initialPosition": { "x": 75, "y": 100 }
+      }
+  ],
+  "pegs": [
+      {
+        "id": "peg_1",
+        "colorId": "red",
+        "position": { "x": 75, "y": 600 }
+      }
+  ],
+  "requiredPairs": [{ "ringId": "ring_1", "pegId": "peg_1" }],
+  "timer": { "totalSeconds": 90 },
+  "arena": { "width": 390, "height": 844 },
+  "obstacles": [],
+  "templateId": "standard",
+  "metadata": {
+    "qualityScore": 0.82,
+    "solvabilityScore": 1.0,
+    "generatedAt": "2024-01-01T00:00:00.000Z"
+  }
+}

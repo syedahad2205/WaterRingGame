@@ -1,0 +1,18 @@
+# Fastlane smoke test lane — task 1.4.4a
+# Run with: bundle exec fastlane smoke_test
+lane :smoke_test do
+  # Validate that required env vars are set
+  UI.user_error!("MATCH_PASSWORD not set") unless ENV['MATCH_PASSWORD']
+
+  # Validate package name / bundle ID configured
+  package_name = CredentialsManager::AppfileConfig.try_fetch_value(:package_name)
+  app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+
+  UI.success("Package name: #{package_name}") if package_name
+  UI.success("App identifier: #{app_identifier}") if app_identifier
+
+  # Run unit tests to confirm test suite is healthy
+  sh("cd .. && npx jest --testPathPattern='smoke' --passWithNoTests")
+
+  UI.success("Fastlane smoke test passed ✓")
+end

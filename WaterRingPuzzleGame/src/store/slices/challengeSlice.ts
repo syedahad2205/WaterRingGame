@@ -215,6 +215,7 @@ function serialiseForMMKV(state: ChallengeState): string {
 
 export const useChallengeStore = create<ChallengeSlice>()(
   persist(
+    // eslint-disable-next-line max-lines-per-function
     (set, get) => ({
       ...DEFAULT_STATE,
 

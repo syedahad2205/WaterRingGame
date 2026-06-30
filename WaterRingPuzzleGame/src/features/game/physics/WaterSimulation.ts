@@ -436,6 +436,7 @@ interface RingPlugin {
  * @param inputState    - Current input snapshot from InputController.
  * @param challengeConfig - Active challenge configuration (for current profile).
  */
+// eslint-disable-next-line max-lines-per-function
 export function applyWaterForces(
   world: Matter.World,
   inputState: InputState,

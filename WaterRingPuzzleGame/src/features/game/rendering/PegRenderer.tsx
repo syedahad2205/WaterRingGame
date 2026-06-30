@@ -130,6 +130,7 @@ interface PegSingleProps {
   t: number;
 }
 
+// eslint-disable-next-line max-lines-per-function
 function PegSingle({ peg, t }: PegSingleProps): React.JSX.Element {
   const { x, y, baseRadius, tipRadius, acceptedColorId, glowColor, isOccupied } = peg;
 

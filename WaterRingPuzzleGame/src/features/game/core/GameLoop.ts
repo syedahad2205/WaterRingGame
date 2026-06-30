@@ -234,7 +234,7 @@ function persistStateIfCheckpoint(state: LoopState, nowMs: number): void {
 }
 
 /** Write the current physics state to MMKV. */
-function saveCheckpoint(state: LoopState): void {
+function saveCheckpoint(_state: LoopState): void {
   try {
     const physicsState = PhysicsWorld.serializeState();
     setItem(CHECKPOINT_KEY, JSON.stringify(physicsState));
@@ -277,6 +277,7 @@ export function restoreFromCheckpoint(): boolean {
  *
  * Requirement 4.4, 4.5, 9.5 — Task 3.1.2
  */
+// eslint-disable-next-line max-lines-per-function
 function writeToSharedValues(state: LoopState, alpha: number): void {
   try {
     const ringStates = PhysicsWorld.getRingStates();
@@ -624,9 +625,9 @@ export const GameLoop = {
  * Requirements: 9.1, 9.2
  */
 let _lightLoopRafId: ReturnType<typeof requestAnimationFrame> | null = null;
-let _lightLoopLastTime: number = 0;
-let _lightLoopAccumulator: number = 0;
-let _lightLoopTickCount: number = 0;
+let _lightLoopLastTime = 0;
+let _lightLoopAccumulator = 0;
+let _lightLoopTickCount = 0;
 
 export function startLoop(callback: () => void): void {
   // Cancel any previous lightweight loop.

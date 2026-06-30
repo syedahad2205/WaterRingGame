@@ -282,6 +282,7 @@ function extractRingPegPair(
  *
  * @internal
  */
+// eslint-disable-next-line max-lines-per-function
 export function handleCollisionStart(
   event: Matter.IEventCollision<Matter.Engine>,
   templateId: string,
@@ -363,6 +364,7 @@ export function handleCollisionStart(
  *
  * @internal
  */
+// eslint-disable-next-line max-lines-per-function
 export function checkStuckRings(
   ringBodies: Map<string, Matter.Body>,
   now: number = Date.now(),
@@ -435,6 +437,7 @@ export function checkStuckRings(
  *
  * @internal
  */
+// eslint-disable-next-line max-lines-per-function
 export function checkNaNPositions(
   ringBodies: Map<string, Matter.Body>,
   lastGoodState: SerializedPhysicsState | null,

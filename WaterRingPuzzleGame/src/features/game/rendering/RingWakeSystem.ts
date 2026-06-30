@@ -206,6 +206,7 @@ export function applyWakePerformanceCap(
  *                      tipRight] — suitable for building a Skia path.
  *                      Returns empty array if trail has fewer than 2 samples.
  */
+// eslint-disable-next-line max-lines-per-function
 export function computeWakePath(
   trail: WakeTrail,
   nowMs: number,

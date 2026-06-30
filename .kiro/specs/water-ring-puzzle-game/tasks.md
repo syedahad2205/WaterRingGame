@@ -61,7 +61,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Configure absolute imports via `tsconfig.json` paths and `babel-plugin-module-resolver`
   - _Requirements: 51.3, 6.1_
 
-  - [ ]* 1.1.1a Write CI script to validate folder structure matches spec
+  - [x]* 1.1.1a Write CI script to validate folder structure matches spec
     - Script reads `src/` directory tree and asserts required directories exist
     - _Requirements: 6.1, 6.2_
 
@@ -71,7 +71,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Create all placeholder `.ts` files for every module listed in Requirements 7 and 8
   - _Requirements: 6.2, 7.1, 7.2, 7.3, 7.4, 7.5, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8_
 
-  - [ ]* 1.1.2a Write unit test asserting all 55+ required files exist
+  - [x]* 1.1.2a Write unit test asserting all 55+ required files exist
     - _Requirements: 6.1_
 
 - [x] 1.1.3 Create `src/app/App.tsx`, `Navigation.tsx`, and `Providers.tsx` stubs
@@ -108,7 +108,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Block: UI layer importing from services layer (must go through store)
   - _Requirements: 2.2, 2.3, 2.4_
 
-  - [ ]* 1.2.2a Write test asserting ESLint catches a mock forbidden import
+  - [x]* 1.2.2a Write test asserting ESLint catches a mock forbidden import
     - _Requirements: 2.7_
 
 - [x] 1.2.3 Configure Prettier and pre-commit hooks with Husky + lint-staged
@@ -136,7 +136,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Configure separate projects for `unit/` and `property/` test suites
   - _Requirements: 45.1, 45.4, 45.5_
 
-  - [ ]* 1.3.1a Write a passing smoke test in `__tests__/unit/smoke.test.ts`
+  - [x]* 1.3.1a Write a passing smoke test in `__tests__/unit/smoke.test.ts`
     - `expect(1 + 1).toBe(2)` — confirms setup works
     - _Requirements: 45.1_
 
@@ -146,7 +146,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Configure verbose failure output with counterexample logging
   - _Requirements: 46.1, 46.3_
 
-  - [ ]* 1.3.2a Write a passing smoke property test
+  - [x]* 1.3.2a Write a passing smoke property test
     - Property: `fc.property(fc.integer(), n => n + 0 === n)` — identity addition
     - _Requirements: 46.1_
 
@@ -175,7 +175,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Steps: `pod install`, `xcodebuild -workspace ... -scheme ... -configuration Debug`
   - _Requirements: 48.1, 53.1_
 
-  - [ ]* 1.4.2a Document Fastlane match certificate setup for iOS signing
+  - [x]* 1.4.2a Document Fastlane match certificate setup for iOS signing
     - _Requirements: 48.1_
 
 - [x] 1.4.3 Create GitHub Actions workflow for Android build
@@ -188,7 +188,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Secrets: App Store Connect API key, Google Play JSON key — stored in GitHub Secrets
   - _Requirements: 48.1, 50.6_
 
-  - [ ]* 1.4.4a Write Fastlane smoke test lane that validates configuration
+  - [x]* 1.4.4a Write Fastlane smoke test lane that validates configuration
     - _Requirements: 48.1_
 
 - [x] 1.4.5 Configure branch protection rules on `main`
@@ -222,7 +222,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - CI job: start emulators before integration tests
   - _Requirements: 47.1_
 
-  - [ ]* 1.5.2a Write integration smoke test using Firebase emulator
+  - [x]* 1.5.2a Write integration smoke test using Firebase emulator
     - Test: anonymous sign-in succeeds; Firestore write succeeds with correct auth
     - _Requirements: 28.1, 26.7_
 
@@ -231,7 +231,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - All parameters must have hardcoded fallback defaults in `src/constants/`
   - _Requirements: 28.5, 28.6_
 
-  - [ ]* 1.5.3a Write unit test asserting all 10 Remote Config keys have fallback defaults
+  - [x]* 1.5.3a Write unit test asserting all 10 Remote Config keys have fallback defaults
     - _Requirements: 28.5_
 
 - [x] 1.5.4 Create Firestore security rules and deploy to dev project
@@ -261,7 +261,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Cache result to MMKV key `device_performance_tier`
   - _Requirements: 24.3, 44.4_
 
-  - [ ]* 1.6.1a Write unit test for benchmark classification thresholds
+  - [x]* 1.6.1a Write unit test for benchmark classification thresholds
     - _Requirements: 24.3, 44.4_
 
 - [x] 1.6.2 Create Maestro E2E baseline measurement flow
@@ -326,7 +326,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Persist to MMKV key `player_slice`
   - _Requirements: 17.1, 18.1, 18.2_
 
-  - [ ]* 2.1.1a Write unit tests for playerSlice reducers and selectors
+  - [x]* 2.1.1a Write unit tests for playerSlice reducers and selectors
     - Test: XP addition, level-up threshold, prestige reset
     - _Requirements: 17.1_
 
@@ -337,7 +337,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Persist to MMKV; write immediately on any coin change
   - _Requirements: 17.2, 18.4_
 
-  - [ ]* 2.1.2a Write unit tests for economySlice coin conservation
+  - [x]* 2.1.2a Write unit tests for economySlice coin conservation
     - Test: balance never goes negative; transaction history capped at 50
     - _Requirements: 17.2, Property 11_
 
@@ -347,7 +347,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Write to MMKV every 1 second during active gameplay; immediate write on challenge start/end
   - _Requirements: 17.3, 18.3, 18.4_
 
-  - [ ]* 2.1.3a Write unit tests for challengeSlice state transitions
+  - [x]* 2.1.3a Write unit tests for challengeSlice state transitions
     - Test: win state, loss state, continue count increment
     - _Requirements: 17.3_
 
@@ -378,7 +378,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - On checksum failure: log to Crashlytics, return null (triggering cloud fallback)
   - _Requirements: 18.1, 18.5, 18.6_
 
-  - [ ]* 2.2.1a Write unit tests for CRC32 checksum write and verification
+  - [x]* 2.2.1a Write unit tests for CRC32 checksum write and verification
     - Test: corrupt data detected; valid data passes; null returned on corruption
     - _Requirements: 18.5_
 
@@ -408,7 +408,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - `src/utils/GameEventEmitter.ts`: typed subscribe/dispatch/unsubscribe with TypeScript discriminated union events
   - _Requirements: 3.1, 3.3_
 
-  - [ ]* 2.3.1a Write unit tests for all 9 event types
+  - [x]* 2.3.1a Write unit tests for all 9 event types
     - Test: subscribe, dispatch, receive, unsubscribe for each
     - _Requirements: 3.1_
 
@@ -418,7 +418,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - No UI component may import a service directly — must use `useServices()` hook
   - _Requirements: 1.7, 3.4, 3.5, 3.6_
 
-  - [ ]* 2.3.2a Write unit test asserting services are accessible via `useServices()`
+  - [x]* 2.3.2a Write unit test asserting services are accessible via `useServices()`
     - _Requirements: 1.7_
 
 - [x] 2.3.3 Implement `useSharedValue` bridge for physics state to React rendering
@@ -483,7 +483,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Tick order: `processInput → applyWaterForces → Matter.Engine.update → checkWinCondition → checkTimerExpiry → checkAdaptiveAssistance → persistStateIfCheckpoint`
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-  - [ ]* 3.1.1a Write unit tests for GameLoop tick order and frame lag cap
+  - [x]* 3.1.1a Write unit tests for GameLoop tick order and frame lag cap
     - Test: verify each tick step executes in correct order; test lag cap fires at 5 frames
     - _Requirements: 9.2, 9.3_
 
@@ -493,7 +493,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Write interpolated positions to Reanimated shared values
   - _Requirements: 4.5, 9.5_
 
-  - [ ]* 3.1.2a Write unit test for interpolation formula at alpha 0, 0.5, and 1.0
+  - [x]* 3.1.2a Write unit test for interpolation formula at alpha 0, 0.5, and 1.0
     - _Requirements: 9.5_
 
 - [x] 3.1.3 Implement MMKV checkpoint serialization (1-second interval + triggers)
@@ -502,7 +502,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - On restore: deserialize from checkpoint and resume from saved physics state
   - _Requirements: 9.6, 18.3, 18.4_
 
-  - [ ]* 3.1.3a Write integration test for checkpoint restore after simulated crash
+  - [x]* 3.1.3a Write integration test for checkpoint restore after simulated crash
     - _Requirements: 18.6_
 
 
@@ -524,11 +524,11 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Implement alternating tap pattern (L-R-L within 600ms)
   - _Requirements: 16.1_
 
-  - [ ]* 3.2.1a Write unit tests for all 6 InputController detection algorithms
+  - [x]* 3.2.1a Write unit tests for all 6 InputController detection algorithms
     - Test each edge: exact threshold at 150ms; exactly 3 taps in 500ms; simultaneous at 45ms gap
     - _Requirements: 16.1_
 
-  - [ ]* 3.2.1b Write property test for input timing edge cases
+  - [x]* 3.2.1b Write property test for input timing edge cases
     - **Property: tap/hold distinction never misclassified at timing boundaries**
     - `fc.property(fc.integer({ min: 0, max: 2000 }), duration => duration < 150 ? isTap(duration) : duration >= 150)`
     - _Requirements: 16.1_
@@ -558,11 +558,11 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Fire `win_condition_met` event after 500ms continuous stability
   - _Requirements: 9.1, 23.5_
 
-  - [ ]* 3.3.1a Write unit test for stability window reset behavior
+  - [x]* 3.3.1a Write unit test for stability window reset behavior
     - Test: 499ms of stability then ring leaves → counter resets; 501ms → win fires
     - _Requirements: 23.5_
 
-  - [ ]* 3.3.1b Write property test for win condition
+  - [x]* 3.3.1b Write property test for win condition
     - **Property: win only fires when all ring-peg pairs satisfied AND stable 500ms**
     - _Requirements: 23.5_
 
@@ -573,7 +573,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Write timer state to challengeSlice each tick
   - _Requirements: 9.1, 16.2_
 
-  - [ ]* 3.3.2a Write property test: timer monotonicity
+  - [x]* 3.3.2a Write property test: timer monotonicity
     - **Property 15: timer never increases without an explicit continue call**
     - `fc.property(fc.integer({ min: 1, max: 10000 }), ticks => timerAfterNTicks(ticks) <= initialTimer)`
     - **Validates: Requirements 9.1, 16.2**
@@ -638,7 +638,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Configure Matter.js: `gravity.y=1`, `gravity.scale=0.001`, `positionIterations=6`, `velocityIterations=4`, `constraintIterations=2`, `broadphase='grid'`
   - _Requirements: 10.1, 10.2, 21.1_
 
-  - [ ]* 4.1.1a Write unit tests for PhysicsWorld interface contract
+  - [x]* 4.1.1a Write unit tests for PhysicsWorld interface contract
     - Test: initialize creates engine, step advances time, destroy cleans up
     - _Requirements: 10.1_
 
@@ -650,7 +650,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Pre-allocate all ring bodies at challenge start (object pooling); no new allocations during gameplay
   - _Requirements: 10.3, 23.1, 23.2, 23.3, 24.4_
 
-  - [ ]* 4.1.2a Write unit tests for ring body construction per size tier
+  - [x]* 4.1.2a Write unit tests for ring body construction per size tier
     - Test: correct mass, radius, and buoyancy per tier
     - _Requirements: 23.1, 23.2, 23.3_
 
@@ -661,7 +661,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Moving peg support: apply velocity along MovementPath each tick
   - _Requirements: 10.4_
 
-  - [ ]* 4.1.3a Write unit test for peg sensor collision filter setup
+  - [x]* 4.1.3a Write unit test for peg sensor collision filter setup
     - _Requirements: 10.4_
 
 - [x] 4.1.4 Implement arena wall bodies and boundary setup
@@ -691,7 +691,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Force applied via `beforeUpdate` event handler
   - _Requirements: 22.2_
 
-  - [ ]* 4.2.1a Write property test for button force symmetry
+  - [x]* 4.2.1a Write property test for button force symmetry
     - **Property 4: left button force at (x,y) == right button force at (W-x, y)**
     - `fc.property(fc.tuple(fc.float({min:0, max:1}), fc.float({min:0, max:1})), ([x,y]) => leftForce(x,y) === rightForce(arenaW-x,y))`
     - **Validates: Requirement 22**
@@ -703,7 +703,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Apply as constant force each tick in the current direction
   - _Requirements: 22.3_
 
-  - [ ]* 4.2.2a Write unit test for current magnitude scaling with difficulty
+  - [x]* 4.2.2a Write unit test for current magnitude scaling with difficulty
     - _Requirements: 22.3_
 
 - [x] 4.2.3 Implement Layer 3: Buoyancy Force
@@ -712,7 +712,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Apply as `beforeUpdate` handler
   - _Requirements: 22.4_
 
-  - [ ]* 4.2.3a Write property test for buoyancy direction
+  - [x]* 4.2.3a Write property test for buoyancy direction
     - **Property 3: computeBuoyancy always returns force.y <= 0**
     - `fc.property(fc.record({y: fc.float({min:0,max:1000}), buoyancy: fc.float({min:0,max:1})}), ring => computeBuoyancy(ring).y <= 0)`
     - **Validates: Requirement 22**
@@ -724,7 +724,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Use xoshiro128** PRNG seeded from input timestamp
   - _Requirements: 22.5_
 
-  - [ ]* 4.2.4a Write unit test for turbulence force direction bounds (±45° range)
+  - [x]* 4.2.4a Write unit test for turbulence force direction bounds (±45° range)
     - _Requirements: 22.5_
 
 - [x] 4.2.5 Implement drag model and force accumulation
@@ -733,13 +733,13 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Force boundedness check: total force per ring capped at MAX_WATER_FORCE
   - _Requirements: 22.7_
 
-  - [ ]* 4.2.5a Write property test for force boundedness
+  - [x]* 4.2.5a Write property test for force boundedness
     - **Property 1: total force never exceeds MAX_WATER_FORCE for any ring position and input state**
     - `fc.property(fc.record({pos: arbRingPos, input: arbInputState, config: arbConfig}), ({pos,input,config}) => totalForce(pos,input,config) <= MAX_WATER_FORCE)`
     - **Validates: Requirement 22**
     - _Requirements: Property 1_
 
-  - [ ]* 4.2.5b Write property test: no force on settled rings
+  - [x]* 4.2.5b Write property test: no force on settled rings
     - **Property 2: settled rings receive zero net force regardless of input**
     - `fc.property(arbInputState, input => applyWaterForces({...ring, settledOnPegId: 'peg1'}, input).magnitude === 0)`
     - **Validates: Requirement 22**
@@ -762,7 +762,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Handle `pegOccupied` haptic when landing blocked by occupied peg
   - _Requirements: 10.6, 23.4_
 
-  - [ ]* 4.3.1a Write unit tests for each of the 5 landing conditions independently
+  - [x]* 4.3.1a Write unit tests for each of the 5 landing conditions independently
     - _Requirements: 10.6, 23.4_
 
 - [x] 4.3.2 Implement stuck detection and recovery system
@@ -771,7 +771,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Allow up to 3 nudges; after 3 failures teleport ring to random open position
   - _Requirements: 10.7_
 
-  - [ ]* 4.3.2a Write integration test for stuck detection and recovery cycle
+  - [x]* 4.3.2a Write integration test for stuck detection and recovery cycle
     - Test: ring stuck 5s → nudge; stuck again → nudge; stuck again → teleport
     - _Requirements: 10.7_
 
@@ -780,7 +780,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - On detection: restore from last valid MMKV checkpoint; log non-fatal Crashlytics event
   - _Requirements: 10.8_
 
-  - [ ]* 4.3.3a Write unit test for NaN detection and recovery trigger
+  - [x]* 4.3.3a Write unit test for NaN detection and recovery trigger
     - _Requirements: 10.8_
 
 - [x] 4.3.4 Implement physics state serialization and restoration
@@ -844,7 +844,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Animate with `useFrameCallback` in Reanimated; write surface Y positions to shared values
   - _Requirements: 38.1_
 
-  - [ ]* 5.1.1a Write unit test for sine wave surface Y computation at t=0, t=1s, t=5s
+  - [x]* 5.1.1a Write unit test for sine wave surface Y computation at t=0, t=1s, t=5s
     - _Requirements: 38.1_
 
 - [x] 5.1.2 Implement Skia water shader (GLSL)
@@ -854,10 +854,10 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - `WaterShader.ts`: load and compile shader; catch compile error; fallback to gradient
   - _Requirements: 41.3, 41.4, 41.5_
 
-  - [ ]* 5.1.2a Write test that shader compiles without error in CI (mock Skia environment)
+  - [x]* 5.1.2a Write test that shader compiles without error in CI (mock Skia environment)
     - _Requirements: 41.3_
 
-  - [ ]* 5.1.2b Write unit test for shader fallback on compile error
+  - [x]* 5.1.2b Write unit test for shader fallback on compile error
     - _Requirements: 41.5_
 
 - [x] 5.1.3 Implement dirty-flag optimization for water surface
@@ -866,7 +866,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - If settled state: only water body layer redraws; all other layers skip
   - _Requirements: 4.3_
 
-  - [ ]* 5.1.3a Write unit test for dirty flag logic: stable state = only layer 1 dirty
+  - [x]* 5.1.3a Write unit test for dirty flag logic: stable state = only layer 1 dirty
     - _Requirements: 4.3_
 
 
@@ -885,7 +885,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Peak displacement: 12px at wall, 0 at screen center at max intensity
   - _Requirements: 38.3_
 
-  - [ ]* 5.2.1a Write unit test for displacement Gaussian formula at x=0, x=ScreenWidth/2, x=ScreenWidth
+  - [x]* 5.2.1a Write unit test for displacement Gaussian formula at x=0, x=ScreenWidth/2, x=ScreenWidth
     - _Requirements: 38.3_
 
 - [x] 5.2.2 Implement Layer 3: Ring Wake System
@@ -895,10 +895,10 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Performance cap: with 6+ active rings, show wakes for 3 fastest rings only
   - _Requirements: 38.4_
 
-  - [ ]* 5.2.2a Write unit test for circular position buffer behavior (overflow, age-out)
+  - [x]* 5.2.2a Write unit test for circular position buffer behavior (overflow, age-out)
     - _Requirements: 38.4_
 
-  - [ ]* 5.2.2b Write unit test for wake performance cap logic (6 rings → 3 wakes)
+  - [x]* 5.2.2b Write unit test for wake performance cap logic (6 rings → 3 wakes)
     - _Requirements: 38.4_
 
 ## Feature 5.3: Bubble System (Layer 4)
@@ -917,7 +917,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Bubble properties per spec: radius 2–8px, initial opacity 0.7
   - _Requirements: 43.4_
 
-  - [ ]* 5.3.1a Write unit test for bubble pool max-40 cap with overflow culling
+  - [x]* 5.3.1a Write unit test for bubble pool max-40 cap with overflow culling
     - _Requirements: 43.4_
 
 - [x] 5.3.2 Implement bubble rise physics and pop trigger
@@ -927,7 +927,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - On surface reach: fire micro ripple event, remove bubble from pool
   - _Requirements: 38.5_
 
-  - [ ]* 5.3.2a Write unit test for bubble rise position formula at t=0, t=0.5s, t=2s
+  - [x]* 5.3.2a Write unit test for bubble rise position formula at t=0, t=0.5s, t=2s
     - _Requirements: 38.5_
 
 
@@ -947,7 +947,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Render via `drawCircle` with stroke style; color = water color at 80% lightness
   - _Requirements: 43.4_
 
-  - [ ]* 5.4.1a Write unit test for ripple radius and opacity formula per type at t=0, midlife, end
+  - [x]* 5.4.1a Write unit test for ripple radius and opacity formula per type at t=0, midlife, end
     - _Requirements: 43.4_
 
 - [x] 5.4.2 Implement RingRenderer with highlight and drop shadow
@@ -959,7 +959,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Near-peg ring: glow pulse at 1.5Hz activates within 100px of correct peg
   - _Requirements: 36.2, 36.6_
 
-  - [ ]* 5.4.2a Write visual regression test for ring rendering (snapshot)
+  - [x]* 5.4.2a Write visual regression test for ring rendering (snapshot)
     - _Requirements: 36.2_
 
 - [x] 5.4.3 Implement PegRenderer with glow and accepted-ring indicator
@@ -969,7 +969,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Peg visual indicator: shows required ring color/size via icon
   - _Requirements: 36.6_
 
-  - [ ]* 5.4.3a Write unit test for peg glow color mapping (colorId → glow color)
+  - [x]* 5.4.3a Write unit test for peg glow color mapping (colorId → glow color)
     - _Requirements: 36.6_
 
 ## Feature 5.5: Device Tier Rendering Management
@@ -986,7 +986,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Listen for `RNDeviceInfo` Low Power Mode / Battery Saver events; downgrade one tier
   - _Requirements: 44.1, 44.2, 44.3, 44.5, 44.6_
 
-  - [ ]* 5.5.1a Write integration test for tier → active layer count mapping
+  - [x]* 5.5.1a Write integration test for tier → active layer count mapping
     - _Requirements: 44.1, 44.2, 44.3_
 
 ## Epic 5: Dependency Graph
@@ -1042,11 +1042,11 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Serializable state: `getState()` and `restoreState(state)` for replay
   - _Requirements: 11.1, 24.6_
 
-  - [ ]* 6.1.1a Write unit tests for all PRNG methods with known seed values
+  - [x]* 6.1.1a Write unit tests for all PRNG methods with known seed values
     - Test: seed(1,2,3,4) → first 10 outputs match known reference values
     - _Requirements: 24.6_
 
-  - [ ]* 6.1.1b Write property test for PRNG determinism
+  - [x]* 6.1.1b Write property test for PRNG determinism
     - **Property 5 (partial): same seed → same output sequence**
     - `fc.property(fc.tuple(fc.integer(), fc.integer(), fc.integer(), fc.integer()), state => { const a = new PRNG(state), b = new PRNG(state); return range(100).every(i => a.nextFloat() === b.nextFloat()) })`
     - _Requirements: Property 5_
@@ -1071,17 +1071,17 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Component formulas: timerBase, requiredRings, decoyRings, obstacleCount, modifierChance, currentStrength
   - _Requirements: 11.2_
 
-  - [ ]* 6.2.1a Write unit tests for D(N) reference values from spec table
+  - [x]* 6.2.1a Write unit tests for D(N) reference values from spec table
     - Test: D(1)=0.07, D(50)≈9.0, D(1000)=50.0, D(10000)≈84.1
     - _Requirements: 11.2_
 
-  - [ ]* 6.2.1b Write property test: difficulty monotonicity
+  - [x]* 6.2.1b Write property test: difficulty monotonicity
     - **Property 9: D(N+1) >= D(N) for all N >= 1**
     - `fc.property(fc.integer({min:1, max:99999}), N => D(N+1) >= D(N))`
     - **Validates: Requirement 11**
     - _Requirements: Property 9_
 
-  - [ ]* 6.2.1c Write property test: difficulty ceiling
+  - [x]* 6.2.1c Write property test: difficulty ceiling
     - **Property 10: D(N) <= 100 for all N**
     - `fc.property(fc.integer({min:1, max:10000000}), N => D(N) <= 100)`
     - **Validates: Requirement 11**
@@ -1113,7 +1113,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - All peg positions within arena bounds
   - _Requirements: 11.2, 11.3_
 
-  - [ ]* 6.3.1a Write property test for peg minimum separation
+  - [x]* 6.3.1a Write property test for peg minimum separation
     - **Property 6: all peg pairs satisfy distance >= minPegSeparation(D(N))**
     - `fc.property(fc.integer({min:1,max:10000}), N => allPegsMinSeparated(generateChallenge(N)))`
     - **Validates: Requirement 11**
@@ -1126,7 +1126,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Obstacle placement after pegs and rings to prevent overlaps
   - _Requirements: 11.2_
 
-  - [ ]* 6.3.2a Write property test for ring-peg bijection
+  - [x]* 6.3.2a Write property test for ring-peg bijection
     - **Property 7: every required ring maps to exactly one peg; no two rings share a peg**
     - `fc.property(fc.integer({min:1,max:10000}), N => isStrictBijection(generateChallenge(N).ringToPegMap))`
     - **Validates: Requirement 11**
@@ -1139,7 +1139,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Step 11: weather/lighting variant from environment config
   - _Requirements: 11.2_
 
-  - [ ]* 6.3.3a Write unit tests for timer formula at D=0, D=50, D=100
+  - [x]* 6.3.3a Write unit tests for timer formula at D=0, D=50, D=100
     - _Requirements: 11.2_
 
 - [x] 6.3.4 Implement complete `generate(N)` pipeline orchestration
@@ -1164,7 +1164,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Solver must complete within 80ms budget; pathological challenges trigger max 5 retries.
 **Testing Requirements:** Unit tests for each quality component; integration test for full validation pipeline.
 
-- [ ] 6.4.1 Implement ValidationSolver with 3 solver strategies
+- [x] 6.4.1 Implement ValidationSolver with 3 solver strategies
   - `src/features/game/generation/ValidationSolver.ts`
   - Strategy 1: greedy nearest-peg approach
   - Strategy 2: global ordering (largest ring first)
@@ -1172,26 +1172,26 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - `SolvabilityScore`: all 3 pass → 1.0; 2/3 → 0.7; 1/3 → 0.4; 0/3 → rejected
   - _Requirements: 11.4_
 
-  - [ ]* 6.4.1a Write unit tests for each solver strategy on known challenges
+  - [x]* 6.4.1a Write unit tests for each solver strategy on known challenges
     - _Requirements: 11.4_
 
-- [ ] 6.4.2 Implement ChallengeScorer and QualityEvaluator
+- [x] 6.4.2 Implement ChallengeScorer and QualityEvaluator
   - `ChallengeScorer.ts`: compute FunScore, FairnessScore, VarietyScore, PacingScore
   - `QualityEvaluator.ts`: `QualityScore = 0.30×Solvability + 0.25×Fun + 0.20×Fairness + 0.15×Variety + 0.10×Pacing`
   - Apply all automatic rejection rules (impossible, too trivial, timer mismatch, etc.)
   - _Requirements: 11.5_
 
-  - [ ]* 6.4.2a Write unit tests for quality score computation with known component values
+  - [x]* 6.4.2a Write unit tests for quality score computation with known component values
     - Test: known components → correct weighted sum
     - _Requirements: 11.5_
 
-- [ ] 6.4.3 Implement Challenge Intelligence Metadata generation (Step 12)
+- [x] 6.4.3 Implement Challenge Intelligence Metadata generation (Step 12)
   - `ChallengeIntelligence` object: predictedSolveTime, predictedCompletionRate, predictedRetryCount, structuralMetrics
   - Computed from solver run results and challenge config analysis
   - Stored with ChallengeConfig; later enriched with actual player data from Cloud Function
   - _Requirements: 11.2_
 
-  - [ ]* 6.4.3a Write unit test for metadata computation from solver results
+  - [x]* 6.4.3a Write unit test for metadata computation from solver results
     - _Requirements: 11.2_
 
 ## Feature 6.5: Template Registry (24 Templates)
@@ -1210,17 +1210,17 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - `getTemplateById(id)` and `selectTemplate(prng, D, N)` methods
   - _Requirements: 11.1_
 
-  - [ ]* 6.5.1a Write unit tests for template selection weighted distribution
+  - [x]* 6.5.1a Write unit tests for template selection weighted distribution
     - Test: D=5 → Standard template dominates; D=80 → advanced templates appear
     - _Requirements: 11.1_
 
-- [ ] 6.5.2 Create 20 golden replay challenge fixtures
+- [x] 6.5.2 Create 20 golden replay challenge fixtures
   - Run generator for challenges 1, 10, 50, 100, 250, 500, 1000, and 13 additional hand-selected challenges
   - Store `ChallengeConfig` as JSON fixtures in `__tests__/fixtures/golden/`
   - CI test: re-generate and compare byte-for-byte
   - _Requirements: 24.8, 47.2_
 
-  - [ ]* 6.5.2a Write golden replay CI test runner
+  - [x]* 6.5.2a Write golden replay CI test runner
     - `__tests__/integration/goldenReplay.test.ts`: load 20 fixtures, regenerate, compare
     - _Requirements: 47.2, 47.3_
 
@@ -1280,7 +1280,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Navigate to GameScreen with config; challenge load time < 500ms
   - _Requirements: 43.6, 43.7_
 
-  - [ ]* 7.1.1a Write integration test for full challenge load pipeline (< 500ms)
+  - [x]* 7.1.1a Write integration test for full challenge load pipeline (< 500ms)
     - _Requirements: 43.6_
 
 - [x] 7.1.2 Implement session lifecycle: start, win, loss, quit flows
@@ -1290,7 +1290,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Quit flow: show confirmation dialog; navigate back to HomeScreen; no partial rewards
   - _Requirements: 9.1, 20.6_
 
-  - [ ]* 7.1.2a Write integration test for win → victory modal flow
+  - [x]* 7.1.2a Write integration test for win → victory modal flow
     - _Requirements: 9.1_
 
   - [x]* 7.1.2b Write integration test for loss → continue modal → defeat modal flow
@@ -1313,13 +1313,13 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Log `continue_used` analytics event
   - _Requirements: 16.2_
 
-  - [ ]* 7.2.1a Write property test: continue cost escalation
+  - [x]* 7.2.1a Write property test: continue cost escalation
     - **Property 12: ContinueCost(D, n+1) > ContinueCost(D, n) for all D and n >= 1**
     - `fc.property(fc.tuple(fc.float({min:0,max:100}), fc.integer({min:1,max:10})), ([D,n]) => continueCost(D,n+1) > continueCost(D,n))`
     - **Validates: Requirement 30**
     - _Requirements: Property 12_
 
-  - [ ]* 7.2.1b Write property test: continue bonus time bounded
+  - [x]* 7.2.1b Write property test: continue bonus time bounded
     - **Property 16: continueBonusTime(D) <= originalChallengeTimer(D)**
     - `fc.property(fc.float({min:0,max:100}), D => continueBonusTime(D) <= timerBase(D))`
     - **Validates: Requirement 30**
@@ -1334,7 +1334,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - `getActiveAssists()`, `shouldShowSkipOption()`, `getNearMissBonusSeconds()`, `reset(N)`
   - _Requirements: 16.2_
 
-  - [ ]* 7.2.2a Write unit tests for frustration trigger conditions
+  - [x]* 7.2.2a Write unit tests for frustration trigger conditions
     - Test: exactly 3 failures triggers; 2 failures does not; consecutive quits logic
     - _Requirements: 16.2_
 
@@ -1359,7 +1359,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - All overlays use Reanimated spring animations; dismissed on first correct action
   - _Requirements: 28.4, 6.7_
 
-  - [ ]* 7.3.1a Write E2E test for challenge 1 tutorial dismissal on button press
+  - [x]* 7.3.1a Write E2E test for challenge 1 tutorial dismissal on button press
     - _Requirements: 28.4_
 
 - [x] 7.3.2 Implement tutorial state tracking and feature unlock flow
@@ -1416,30 +1416,30 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All 18 routes registered; bottom nav 4 tabs with active state; deep links work for challenge sharing; all transitions use 300ms ease or reduced-motion fade.
 **Testing Requirements:** Unit tests for navigation route registration; integration test for bottom tab switching.
 
-- [ ] 8.1.1 Implement React Navigation stack and tab structure
+- [x] 8.1.1 Implement React Navigation stack and tab structure
   - Stack navigator: Splash → Loading → Home → Game → Pause → Victory → Defeat → Continue → Leaderboard → Achievements → Inventory → Collection → Store → Settings → DailyChallenge → Profile → Statistics → ReplayViewer
   - Bottom tab navigator: Home, Leaderboard, Store, Profile (4 tabs with filled icons + accent underline)
   - _Requirements: 34.7, 6.7_
 
-  - [ ]* 8.1.1a Write unit test for navigation route completeness (all 18 screens registered)
+  - [x]* 8.1.1a Write unit test for navigation route completeness (all 18 screens registered)
     - _Requirements: 6.7_
 
-- [ ] 8.1.2 Implement deep-link configuration for challenge sharing
+- [x] 8.1.2 Implement deep-link configuration for challenge sharing
   - URL scheme: `waterring://challenge/{N}` and `waterring://replay/{id}`
   - Handle deep links in `Navigation.tsx`; navigate to correct screen with params
   - _Requirements: 34.7_
 
-  - [ ]* 8.1.2a Write unit test for deep-link URL parsing
+  - [x]* 8.1.2a Write unit test for deep-link URL parsing
     - _Requirements: 34.7_
 
-- [ ] 8.1.3 Implement BottomNav component with 4 tabs
+- [x] 8.1.3 Implement BottomNav component with 4 tabs
   - Tabs: Home (house icon), Leaderboard (trophy), Store (bag), Profile (person)
   - Active tab: filled icon + accent color underline
   - Haptic `navigationTap` on each tab press
   - `accessibilityRole="button"`, `accessibilityLabel` per tab
   - _Requirements: 34.7, 15.3_
 
-  - [ ]* 8.1.3a Write accessibility test for BottomNav tab labels
+  - [x]* 8.1.3a Write accessibility test for BottomNav tab labels
     - _Requirements: 33.6_
 
 
@@ -1452,7 +1452,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Timer arc must handle 0% gracefully; PressCounter must show shake on < 10 presses.
 **Testing Requirements:** Unit tests for TimerArc arc calculation; accessibility test for WaterButton.
 
-- [ ] 8.2.1 Implement WaterButton component
+- [x] 8.2.1 Implement WaterButton component
   - `src/screens/` (composed in GameScreen)
   - Min touch target: 88×88dp; depress 3dp in 50ms, spring back 150ms on release
   - Emit radial water ripple at press origin (Layer 5 ripple system)
@@ -1461,28 +1461,28 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - `accessibilityRole="button"`, non-empty `accessibilityLabel`
   - _Requirements: 33.1, 33.2, 33.6, 33.7_
 
-  - [ ]* 8.2.1a Write unit tests for WaterButton press events and haptic trigger
+  - [x]* 8.2.1a Write unit tests for WaterButton press events and haptic trigger
     - _Requirements: 33.1, 33.2_
 
-  - [ ]* 8.2.1b Write accessibility test: touch target ≥ 88dp; accessibilityLabel present
+  - [x]* 8.2.1b Write accessibility test: touch target ≥ 88dp; accessibilityLabel present
     - _Requirements: 33.7_
 
-- [ ] 8.2.2 Implement TimerArc component
+- [x] 8.2.2 Implement TimerArc component
   - Circular arc that depletes clockwise; computed as SVG `drawArc` path
   - Color shift to amber over 500ms at 30%; color shift to red over 300ms + 1Hz pulse at 10%
   - Display remaining time numerically in center
   - _Requirements: 33.3, 36.5_
 
-  - [ ]* 8.2.2a Write unit test for arc angle computation at 100%, 50%, 30%, 10%, 0%
+  - [x]* 8.2.2a Write unit test for arc angle computation at 100%, 50%, 30%, 10%, 0%
     - _Requirements: 33.3_
 
-- [ ] 8.2.3 Implement ChallengeHUD and PressCounterHUD
+- [x] 8.2.3 Implement ChallengeHUD and PressCounterHUD
   - `ChallengeHUD`: challenge number, template icon, TimerArc, star progress (0–3), continue count
   - In top safe area; minimal footprint; all elements accessible
   - `PressCounterHUD` (Limited Presses template only): remaining press budget; shake + red shift at ≤10
   - _Requirements: 33.4, 33.5_
 
-  - [ ]* 8.2.3a Write unit test for PressCounterHUD shake trigger at threshold
+  - [x]* 8.2.3a Write unit test for PressCounterHUD shake trigger at threshold
     - _Requirements: 33.5_
 
 ## Feature 8.3: Modals and Overlays
@@ -1493,45 +1493,45 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** VictoryModal star animation sequence ≥4 seconds; ContinueModal auto-dismiss pauses on interaction; DefeatModal never uses "FAIL"; all overlays have reduced-motion alternatives.
 **Testing Requirements:** Integration tests for victory/defeat modal flows; accessibility test for modal labels.
 
-- [ ] 8.3.1 Implement PauseOverlay with frosted glass
+- [x] 8.3.1 Implement PauseOverlay with frosted glass
   - Frosted glass via `@react-native-community/blur` (BlurView)
   - Buttons: Resume, Restart (with confirmation), Settings shortcut, Quit to Home
   - Pause audio on show, fade music to 15% volume
   - _Requirements: 34.1_
 
-  - [ ]* 8.3.1a Write integration test: pause → resume returns to exact game state
+  - [x]* 8.3.1a Write integration test: pause → resume returns to exact game state
     - _Requirements: 34.1_
 
-- [ ] 8.3.2 Implement ContinueModal with 10-second auto-dismiss
+- [x] 8.3.2 Implement ContinueModal with 10-second auto-dismiss
   - Display: rings placed progress, remaining time, bonus time to be granted, cost (coins or Watch Ad), Cancel
   - 10-second auto-dismiss countdown (visible progress bar)
   - Auto-dismiss PAUSES on user touch; resumes when touch ends
   - _Requirements: 34.2_
 
-  - [ ]* 8.3.2a Write unit test for auto-dismiss timer pause on touch
+  - [x]* 8.3.2a Write unit test for auto-dismiss timer pause on touch
     - _Requirements: 34.2_
 
-- [ ] 8.3.3 Implement VictoryModal with complete animation sequence
+- [x] 8.3.3 Implement VictoryModal with complete animation sequence
   - Stars flip one-by-one (250ms each, 100ms gap)
   - Coins arc to counter with trail particles (600–800ms)
   - XP bar shimmer fill (600ms)
   - Total sequence ≥ 4 seconds
   - _Requirements: 34.3, 37.1_
 
-  - [ ]* 8.3.3a Write unit test for VictoryModal animation sequence timing
+  - [x]* 8.3.3a Write unit test for VictoryModal animation sequence timing
     - Test: all animations fire in correct order; total duration ≥ 4s
     - _Requirements: 34.3_
 
-- [ ] 8.3.4 Implement DefeatModal and AchievementUnlockBanner
+- [x] 8.3.4 Implement DefeatModal and AchievementUnlockBanner
   - DefeatModal: rings-placed progress; CTA "Continue"; never uses "FAIL"/"FAILED"
   - AchievementUnlockBanner: slide down 400ms, display 2200ms, slide up 400ms; dismissible by tap; particle burst on appearance
   - Reduced-motion alternative: opacity fade instead of slide for both
   - _Requirements: 34.4, 34.5, 34.6_
 
-  - [ ]* 8.3.4a Write accessibility test: DefeatModal has no "FAIL" text
+  - [x]* 8.3.4a Write accessibility test: DefeatModal has no "FAIL" text
     - _Requirements: 34.4_
 
-  - [ ]* 8.3.4b Write unit test for AchievementBanner timing sequence
+  - [x]* 8.3.4b Write unit test for AchievementBanner timing sequence
     - _Requirements: 34.5_
 
 
@@ -1543,35 +1543,35 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All store items display correctly; leaderboard player row pinned at bottom; collection shows grey for missing items; profile shows correct data; charts animate on screen entry.
 **Testing Requirements:** Unit tests for component rendering with mock data; accessibility tests.
 
-- [ ] 8.4.1 Implement StoreScreen with CosmeticCard component
+- [x] 8.4.1 Implement StoreScreen with CosmeticCard component
   - `CosmeticCard`: thumbnail, name, tier badge, price in coins or "OWNED" badge; tap-to-preview
   - Grid layout; filter by category (ring skins, water colors, victory animations, etc.)
   - Purchase flow calls `EconomyService.spendCoins`
   - _Requirements: 35.1_
 
-  - [ ]* 8.4.1a Write unit tests for CosmeticCard with owned/unowned/locked states
+  - [x]* 8.4.1a Write unit tests for CosmeticCard with owned/unowned/locked states
     - _Requirements: 35.1_
 
-- [ ] 8.4.2 Implement LeaderboardScreen with LeaderboardRow component
+- [x] 8.4.2 Implement LeaderboardScreen with LeaderboardRow component
   - `LeaderboardRow`: rank, avatar, display name, rank badge, score, time, ghost replay button
   - Player's own row pinned at bottom of list
   - Filters: global/country/friends, today/week/allTime
   - Stale cache display with "Last updated [time]" indicator when offline
   - _Requirements: 35.2, 20.2_
 
-  - [ ]* 8.4.2a Write unit tests for LeaderboardRow rendering with mock data
+  - [x]* 8.4.2a Write unit tests for LeaderboardRow rendering with mock data
     - _Requirements: 35.2_
 
-- [ ] 8.4.3 Implement CollectionScreen, ProfileScreen, StatisticsScreen
+- [x] 8.4.3 Implement CollectionScreen, ProfileScreen, StatisticsScreen
   - `CollectionCard`: full color for complete; grey missing items with "how to get" on tap
   - `ProfileCard`: avatar + frame + banner, username, title, rank badge + progress bar, 3 pinned achievements, completion score %
   - `StatisticsChart`: line (stars over time), area (coins earned vs spent), bar (challenges per template); all animate on entry
   - _Requirements: 35.3, 35.4, 35.5_
 
-  - [ ]* 8.4.3a Write accessibility test for ProfileCard rank badge label
+  - [x]* 8.4.3a Write accessibility test for ProfileCard rank badge label
     - _Requirements: 35.4_
 
-- [ ] 8.4.4 Implement SettingsScreen with all settings controls
+- [x] 8.4.4 Implement SettingsScreen with all settings controls
   - Audio: master, music, ambient, SFX sliders
   - Haptics: global toggle, intensity slider (25/50/75/100%), gameplay and UI sub-toggles
   - Accessibility: reduced motion toggle, mono audio, color-blind preset selector, motor accessibility toggle
@@ -1579,7 +1579,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Privacy Policy and Terms of Service links
   - _Requirements: 17.4, 54.6_
 
-  - [ ]* 8.4.4a Write integration test: change haptic intensity → verify HapticManager receives new scale
+  - [x]* 8.4.4a Write integration test: change haptic intensity → verify HapticManager receives new scale
     - _Requirements: 15.4, 15.5_
 
 ## Feature 8.5: Remaining Screens (SplashScreen, HomeScreen, DailyChallengeScreen, AchievementsScreen, InventoryScreen, ReplayViewerScreen)
@@ -1590,32 +1590,32 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** Splash → Loading → Home transition < 3s cold start; HomeScreen shows correct challenge state; daily challenge shows countdown timer; replay viewer has all controls.
 **Testing Requirements:** E2E cold start timing test; unit tests for DailyChallenge countdown.
 
-- [ ] 8.5.1 Implement SplashScreen and LoadingScreen
+- [x] 8.5.1 Implement SplashScreen and LoadingScreen
   - Splash: logo animation (Lottie); check Firebase Auth; load MMKV state; run device benchmark
   - Loading: progress indicator while Remote Config fetches and assets preload
   - Total splash → home time < 3 seconds (cold start target)
   - _Requirements: 43.5_
 
-  - [ ]* 8.5.1a Write E2E cold start timing test (< 3s target, < 5s hard limit)
+  - [x]* 8.5.1a Write E2E cold start timing test (< 3s target, < 5s hard limit)
     - _Requirements: 43.5, 53.5_
 
-- [ ] 8.5.2 Implement HomeScreen as primary hub
+- [x] 8.5.2 Implement HomeScreen as primary hub
   - Show: current challenge number, next challenge preview, daily challenge countdown, streak, coin balance
   - Feature unlock gates (leaderboard, store, daily) per onboarding state
   - Play button navigates to GameScreen with next challenge number
   - _Requirements: 28.4_
 
-  - [ ]* 8.5.2a Write integration test: HomeScreen shows correct challenge number and coin balance
+  - [x]* 8.5.2a Write integration test: HomeScreen shows correct challenge number and coin balance
     - _Requirements: 28.4_
 
-- [ ] 8.5.3 Implement DailyChallengeScreen, AchievementsScreen, InventoryScreen, ReplayViewerScreen
+- [x] 8.5.3 Implement DailyChallengeScreen, AchievementsScreen, InventoryScreen, ReplayViewerScreen
   - Daily: countdown to midnight UTC reset; show today's challenge (global seed); leaderboard for today
   - Achievements: grid of all achievements (locked/unlocked); progress for in-progress
   - Inventory: ring skins, water colors, victory animations, button skins — with equip/unequip
   - ReplayViewer: play/pause, scrub bar, speed selector (0.25×–4×), step-frame, camera follow, reset
   - _Requirements: 13.4, 13.6_
 
-  - [ ]* 8.5.3a Write unit tests for ReplayViewer playback speed selector
+  - [x]* 8.5.3a Write unit tests for ReplayViewer playback speed selector
     - _Requirements: 13.4_
 
 ## Epic 8: Dependency Graph
@@ -1672,7 +1672,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Configure platform audio session: duck external audio (iOS: `AVAudioSessionCategoryPlayback`; Android: `AUDIOFOCUS_GAIN`)
   - _Requirements: 14.1, 14.2, 14.5_
 
-  - [ ]* 9.1.1a Write unit tests for AudioEngine state machine (pause/resume/victory/defeat)
+  - [x]* 9.1.1a Write unit tests for AudioEngine state machine (pause/resume/victory/defeat)
     - _Requirements: 14.1_
 
 - [x] 9.1.2 Implement SFXManager with all gameplay SFX events
@@ -1683,18 +1683,18 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Maximum 3 collision SFX per 100ms (throttle for spam prevention)
   - _Requirements: 14.1, 15.4_
 
-  - [ ]* 9.1.2a Write integration tests for all SFX trigger-event mappings
+  - [x]* 9.1.2a Write integration tests for all SFX trigger-event mappings
     - Test: `ring_settled` event → ring-lands-on-peg SFX plays
     - _Requirements: 14.1_
 
-- [ ] 9.1.3 Implement visual compensation for muted SFX
+- [x] 9.1.3 Implement visual compensation for muted SFX
   - When SFX muted: subscribe to `14.6` flag; notify UI layer
   - Ring landing: sparkle animation on ring body (micro particle burst)
   - Button press: button flash animation (glow pulse 200ms)
   - `WaterButton` and `RingRenderer` accept `showVisualFeedback` prop
   - _Requirements: 14.6_
 
-  - [ ]* 9.1.3a Write unit test: SFX muted → visual compensation components active
+  - [x]* 9.1.3a Write unit test: SFX muted → visual compensation components active
     - _Requirements: 14.6_
 
 
@@ -1707,7 +1707,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Theme change while playing must crossfade seamlessly; boss challenge music activates immediately from start.
 **Testing Requirements:** Integration test for stem activation state machine.
 
-- [ ] 9.2.1 Implement MusicLayerManager with stem-based adaptive mixing
+- [x] 9.2.1 Implement MusicLayerManager with stem-based adaptive mixing
   - `src/features/audio/MusicLayerManager.ts`
   - Load all stems for active theme at challenge start
   - State machine for stem activation per mixing rules (from design.md)
@@ -1715,18 +1715,18 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Pause: fade all to 15% volume; Resume: fade to active levels over 1.5 bars
   - _Requirements: 14.2, 14.3, 14.4_
 
-  - [ ]* 9.2.1a Write integration tests for music stem state transitions
+  - [x]* 9.2.1a Write integration tests for music stem state transitions
     - Test each state transition fires correct stem activation
     - _Requirements: 14.2_
 
-- [ ] 9.2.2 Implement ambient system and music theme crossfade
+- [x] 9.2.2 Implement ambient system and music theme crossfade
   - `src/features/audio/AudioEngine.ts` (ambient section)
   - Per-theme ambient loops; crossfade 1.5 seconds on theme change
   - Ambient mixed at 25–35% of SFX layer volume
   - Menu music: Base + Texture only; transition from menu to gameplay is smooth 2-second crossfade (music does not restart)
   - _Requirements: 14.2_
 
-  - [ ]* 9.2.2a Write unit test for ambient crossfade timing (1.5s transition)
+  - [x]* 9.2.2a Write unit test for ambient crossfade timing (1.5s transition)
     - _Requirements: 14.2_
 
 ## Feature 9.3: HapticManager with all 25 Events
@@ -1746,11 +1746,11 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Ring collision throttle: max 3 per 100ms
   - _Requirements: 15.1, 15.2, 15.3, 15.4_
 
-  - [ ]* 9.3.1a Write unit tests for all 25 haptic event pattern definitions
+  - [x]* 9.3.1a Write unit tests for all 25 haptic event pattern definitions
     - Test: each event has correct amplitude and timing arrays
     - _Requirements: 15.3_
 
-  - [ ]* 9.3.1b Write unit test: unsupported device → trigger() is no-op without error
+  - [x]* 9.3.1b Write unit test: unsupported device → trigger() is no-op without error
     - _Requirements: 15.2_
 
 - [x] 9.3.2 Implement global intensity scaling and settings integration
@@ -1759,7 +1759,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Read initial intensity from `settingsSlice.hapticIntensity`; subscribe to setting changes
   - _Requirements: 15.5_
 
-  - [ ]* 9.3.2a Write unit test: intensity 0% → trigger produces no vibration
+  - [x]* 9.3.2a Write unit test: intensity 0% → trigger produces no vibration
     - _Requirements: 15.5_
 
 ## Epic 9: Dependency Graph
@@ -1805,32 +1805,32 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** Ring landing: scale +10% over 100ms ease-out, spring back 300ms (stiffness 200, damping 20); near-peg glow: 1.5Hz sinusoidal 0.3–0.8 opacity; button depress: 3dp/50ms linear, spring 150ms.
 **Testing Requirements:** Unit tests for animation parameter values; reduced-motion smoke test.
 
-- [ ] 10.1.1 Implement ring landing animation
+- [x] 10.1.1 Implement ring landing animation
   - Scale +10% over 100ms ease-out → spring back to 1.0 over 300ms (stiffness 200, damping 20)
   - Triggered by `ring_settled` game event
   - Reduced-motion: opacity flash (50ms fade down, 150ms fade up)
   - _Requirements: 36.1_
 
-  - [ ]* 10.1.1a Write unit test for ring landing animation spring parameters
+  - [x]* 10.1.1a Write unit test for ring landing animation spring parameters
     - Test: stiffness=200, damping=20; max scale 1.1; total duration ≤ 400ms
     - _Requirements: 36.1_
 
-- [ ] 10.1.2 Implement ring near-peg glow pulse and button press animations
+- [x] 10.1.2 Implement ring near-peg glow pulse and button press animations
   - Near-peg glow: `withRepeat(withTiming(...))` at 1.5Hz; opacity 0.3–0.8; activates at 100px proximity
   - Button press: 3dp depress linear 50ms; spring back `withSpring` 150ms on release
   - Water ripple: expand radially at 120px/s; opacity 0.4 → 0 over 1000ms; max 120px radius
   - _Requirements: 36.2, 36.3, 36.4_
 
-  - [ ]* 10.1.2a Write unit test for near-peg glow opacity range (0.3–0.8) and frequency (1.5Hz)
+  - [x]* 10.1.2a Write unit test for near-peg glow opacity range (0.3–0.8) and frequency (1.5Hz)
     - _Requirements: 36.2_
 
-- [ ] 10.1.3 Implement timer arc animations (amber and red transitions)
+- [x] 10.1.3 Implement timer arc animations (amber and red transitions)
   - Amber transition: color shift over 500ms when crossing 30%
   - Red transition: color shift over 300ms + 1Hz pulse when crossing 10%
   - Peg victory glow: 1.5Hz pulse, opacity 0.3–0.6, ring's color
   - _Requirements: 36.5, 36.6_
 
-  - [ ]* 10.1.3a Write unit test for timer animation transitions at 30% and 10% thresholds
+  - [x]* 10.1.3a Write unit test for timer animation transitions at 30% and 10% thresholds
     - _Requirements: 36.5_
 
 
@@ -1842,7 +1842,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** Victory sequence: camera zoom → flash → modal → stars one-by-one → coins arc → XP fill; total ≥ 4 seconds; defeat: drain overlay then modal; achievement: slide down → display → slide up in 400+2200+400ms.
 **Testing Requirements:** Integration tests for victory and defeat sequence execution order; timing tests.
 
-- [ ] 10.2.1 Implement complete Victory Sequence
+- [x] 10.2.1 Implement complete Victory Sequence
   - Step 1: camera zoom 10% over 400ms ease-out (Reanimated transform)
   - Step 2: screen flash white 20ms (full-screen overlay opacity 0→1→0)
   - Step 3: VictoryModal slides in 300ms
@@ -1853,11 +1853,11 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Reduced-motion: skip steps 1–2; fade in modal; no star flip animation
   - _Requirements: 37.1_
 
-  - [ ]* 10.2.1a Write integration test for victory sequence step order and timing
+  - [x]* 10.2.1a Write integration test for victory sequence step order and timing
     - Test: all 6 steps execute in order; total duration ≥ 4s
     - _Requirements: 37.1_
 
-- [ ] 10.2.2 Implement Defeat, Achievement, Rank-Up, and Continue animations
+- [x] 10.2.2 Implement Defeat, Achievement, Rank-Up, and Continue animations
   - Defeat: water drain overlay (400ms fade in, 800ms drain); DefeatModal scale-from-0.85 + fade 300ms
   - Achievement banner: slide down 400ms spring (stiffness 300, damping 30); display 2200ms; slide up 400ms; particle burst at appearance
   - Rank-up: badge scale 0 → 1.2 → 1.0 (400ms spring overshoot); 600ms glow pulse; 8 radiating particle lines
@@ -1865,10 +1865,10 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - All have reduced-motion opacity-fade alternatives
   - _Requirements: 37.2, 37.3, 37.4, 37.5_
 
-  - [ ]* 10.2.2a Write unit tests for each animation parameter (achievement banner timing, rank-up spring)
+  - [x]* 10.2.2a Write unit tests for each animation parameter (achievement banner timing, rank-up spring)
     - _Requirements: 37.3, 37.4_
 
-  - [ ]* 10.2.2b Write integration test for defeat sequence → modal render
+  - [x]* 10.2.2b Write integration test for defeat sequence → modal render
     - _Requirements: 37.2_
 
 ## Epic 10: Dependency Graph
@@ -1914,25 +1914,25 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Level-up during challenge end animation (handle sequentially); prestige max level boundary.
 **Testing Requirements:** Unit tests for xpRequired formula; property test for XP conservation.
 
-- [ ] 11.1.1 Implement XPSystem with challenge XP awards
+- [x] 11.1.1 Implement XPSystem with challenge XP awards
   - `src/features/progression/XPSystem.ts`
   - XP per challenge: base × difficulty multiplier × star multiplier × (2.0 if first completion)
   - Apply XP to playerSlice; check for level-up after each award
   - Log `xp_earned` analytics event
   - _Requirements: 17.1_
 
-  - [ ]* 11.1.1a Write unit tests for XP formula at D=0, D=50, D=100 with 1, 2, 3 stars
+  - [x]* 11.1.1a Write unit tests for XP formula at D=0, D=50, D=100 with 1, 2, 3 stars
     - _Requirements: 17.1_
 
-- [ ] 11.1.2 Implement LevelSystem and PrestigeSystem
+- [x] 11.1.2 Implement LevelSystem and PrestigeSystem
   - `LevelSystem.ts`: `xpRequired(level) = BASE_XP × level^1.8`; levelUp() dispatches `playerSlice.levelUp`; fires `level_up` analytics event
   - `PrestigeSystem.ts`: `prestige()` resets level to 1 but grants prestige title, badge, and XP multiplier; max prestige = 10
   - _Requirements: 17.1_
 
-  - [ ]* 11.1.2a Write unit tests for xpRequired at level 1, 10, 50, 100
+  - [x]* 11.1.2a Write unit tests for xpRequired at level 1, 10, 50, 100
     - _Requirements: 17.1_
 
-  - [ ]* 11.1.2b Write unit test: prestige resets level to 1, grants multiplier
+  - [x]* 11.1.2b Write unit test: prestige resets level to 1, grants multiplier
     - _Requirements: 17.1_
 
 ## Feature 11.2: Mastery Tracker and Achievement Engine
@@ -1944,16 +1944,16 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Achievement with complex cross-session conditions (e.g., "win 10 challenges without continues"); duplicate unlock protection.
 **Testing Requirements:** Unit tests for achievement condition evaluation; integration test for unlock event chain.
 
-- [ ] 11.2.1 Implement MasteryTracker per template
+- [x] 11.2.1 Implement MasteryTracker per template
   - `src/features/progression/MasteryTracker.ts`
   - Track: completion count, best time, best stars per template (Firestore: `/players/{userId}/mastery/{templateId}`)
   - Mastery levels: Bronze (5 completions), Silver (20), Gold (50), Platinum (100)
   - _Requirements: 8.2_
 
-  - [ ]* 11.2.1a Write unit tests for mastery level calculation
+  - [x]* 11.2.1a Write unit tests for mastery level calculation
     - _Requirements: 8.2_
 
-- [ ] 11.2.2 Implement AchievementEngine with all achievement definitions
+- [x] 11.2.2 Implement AchievementEngine with all achievement definitions
   - `src/features/progression/AchievementEngine.ts`
   - Expose: `evaluateAfterChallenge(result)`, `evaluateAfterSession(session)`, `isUnlocked(achievementId)`
   - Dispatch `achievement_unlock` event to Analytics and HapticManager on unlock
@@ -1961,10 +1961,10 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Prevent duplicate unlock (check against `playerSlice.unlockedAchievements`)
   - _Requirements: 16.4_
 
-  - [ ]* 11.2.2a Write unit tests for achievement condition evaluation (10 representative achievements)
+  - [x]* 11.2.2a Write unit tests for achievement condition evaluation (10 representative achievements)
     - _Requirements: 16.4_
 
-  - [ ]* 11.2.2b Write integration test: achievement unlock → analytics event + haptic event chain
+  - [x]* 11.2.2b Write integration test: achievement unlock → analytics event + haptic event chain
     - _Requirements: 16.4_
 
 ## Feature 11.3: Collection System (20 Collections)
@@ -1975,14 +1975,14 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All 20 collections defined; progress tracked; collection completion grants reward; CollectionScreen shows correct status; progress syncs to Firestore.
 **Testing Requirements:** Unit tests for collection progress computation; integration test for reward grant on completion.
 
-- [ ] 11.3.1 Implement CollectionTracker with all 20 collection definitions
+- [x] 11.3.1 Implement CollectionTracker with all 20 collection definitions
   - `src/features/progression/CollectionTracker.ts`
   - Collections: template mastery sets, cosmetic type sets, streak milestone sets, boss challenge sets, etc.
   - Track completion per item in each collection
   - Complete collection → grant reward (cosmetic or coins) → log `collection_complete` analytics
   - _Requirements: 8.2_
 
-  - [ ]* 11.3.1a Write unit tests for collection completion detection and reward grant
+  - [x]* 11.3.1a Write unit tests for collection completion detection and reward grant
     - _Requirements: 8.2_
 
 ## Epic 11: Dependency Graph
@@ -2029,36 +2029,36 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Cloud Function timeout → retry once after 5s → queue for background retry; duplicate txId → silent success (no double credit).
 **Testing Requirements:** Property tests 11, 13, 14 (conservation, idempotency, non-negative).
 
-- [ ] 12.1.1 Implement CoinLedger with HMAC signing
+- [x] 12.1.1 Implement CoinLedger with HMAC signing
   - `src/features/economy/CoinLedger.ts`
   - Track balance in economySlice; maintain transaction history (last 50)
   - Sign every coin-grant event: `HMAC-SHA256(key=PBKDF2(userId + deviceId + appSecret), message=txData)`
   - `appSecret` must be obfuscated via native code (not in JS source)
   - _Requirements: 12.4, 52.7_
 
-  - [ ]* 12.1.1a Write unit test for HMAC signature generation and verification
+  - [x]* 12.1.1a Write unit test for HMAC signature generation and verification
     - _Requirements: 12.4_
 
-- [ ] 12.1.2 Implement EconomyService with full interface
+- [x] 12.1.2 Implement EconomyService with full interface
   - `src/features/economy/EconomyService.ts`
   - `creditCoins(userId, amount, source, txId)`: idempotent (check txId in MMKV); optimistic update; Cloud Function call; rollback on rejection
   - `spendCoins(userId, amount, sink)`: reject if would go negative; optimistic deduct; rollback on failure
   - `getBalance(userId)`: from economySlice (synchronous, no network)
   - _Requirements: 12.1, 12.2, 12.3, 12.5_
 
-  - [ ]* 12.1.2a Write property test: coin conservation
+  - [x]* 12.1.2a Write property test: coin conservation
     - **Property 11: finalBalance = initialBalance + sum(credits) - sum(debits)**
     - `fc.property(fc.array(arbTransaction), txs => runTransactions(txs).balance === computeExpected(txs))`
     - **Validates: Requirements 12, 30**
     - _Requirements: Property 11_
 
-  - [ ]* 12.1.2b Write property test: idempotent coin credit
+  - [x]* 12.1.2b Write property test: idempotent coin credit
     - **Property 13: creditCoins with same txId multiple times credits exactly once**
     - `fc.property(fc.string(), txId => { creditCoins(txId); creditCoins(txId); return getBalance() === initialBalance + AMOUNT })`
     - **Validates: Requirements 12, 30**
     - _Requirements: Property 13_
 
-  - [ ]* 12.1.2c Write property test: non-negative balance
+  - [x]* 12.1.2c Write property test: non-negative balance
     - **Property 14: spendCoins never results in balance < 0**
     - `fc.property(fc.integer({min:0,max:10000}), amount => { spendCoins(amount); return getBalance() >= 0 })`
     - **Validates: Requirements 12, 30**
@@ -2074,17 +2074,17 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Purchase interrupted (user killed app) must be recoverable on next launch; IAP initiation blocked when offline.
 **Testing Requirements:** Integration test with RevenueCat sandbox; unit test for offline IAP block.
 
-- [ ] 12.2.1 Implement PurchaseService wrapping RevenueCat SDK
+- [x] 12.2.1 Implement PurchaseService wrapping RevenueCat SDK
   - `src/features/economy/PurchaseService.ts`
   - `initiatePurchase(productId)`: call RevenueCat `purchaseProduct`; on success call `creditCoins(txId=revenueCatTxId)`
   - `restorePurchases()`: call RevenueCat restore; grant any ungranted entitlements
   - Block IAP initiation when offline; show "Network required for purchases" message
   - _Requirements: 12.1, 12.2, 20.4_
 
-  - [ ]* 12.2.1a Write integration test for complete sandbox IAP flow (purchase → credit)
+  - [x]* 12.2.1a Write integration test for complete sandbox IAP flow (purchase → credit)
     - _Requirements: 54.7_
 
-  - [ ]* 12.2.1b Write unit test for offline IAP block behavior
+  - [x]* 12.2.1b Write unit test for offline IAP block behavior
     - _Requirements: 20.4_
 
 ## Feature 12.3: Rewarded Ads (AdMob/IronSource)
@@ -2095,17 +2095,17 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** Rewarded ad serves and completes; daily view limit enforced; coin reward granted after completion; fatigue protection (max views/day); ad unavailable shows coin fallback.
 **Testing Requirements:** Integration test with production placement IDs in test mode; unit test for daily limit enforcement.
 
-- [ ] 12.3.1 Implement AdService with daily limit and fatigue protection
+- [x] 12.3.1 Implement AdService with daily limit and fatigue protection
   - `src/features/economy/AdService.ts`
   - Preload rewarded video on app launch; reload after each view
   - `watchRewardedAd()`: check daily limit (from Remote Config `max_daily_ad_views`); show ad; on completion grant reward; increment daily counter
   - Ad unavailable → show "No ads available, use coins instead" fallback
   - _Requirements: 17.2_
 
-  - [ ]* 12.3.1a Write unit test for daily ad limit enforcement (counter increments, blocks at max)
+  - [x]* 12.3.1a Write unit test for daily ad limit enforcement (counter increments, blocks at max)
     - _Requirements: 17.2_
 
-  - [ ]* 12.3.1b Write integration test: ad completion → coin credit
+  - [x]* 12.3.1b Write integration test: ad completion → coin credit
     - _Requirements: 55.5_
 
 ## Feature 12.4: Cosmetic Physical Isolation
@@ -2116,12 +2116,12 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** equipping any cosmetic never changes mass, gravity, force constants, peg radius, settle velocity, or collision params.
 **Testing Requirements:** Property test 20 (cosmetic physical isolation).
 
-- [ ] 12.4.1 Implement cosmetic application (rendering-only) and isolation guard
+- [x] 12.4.1 Implement cosmetic application (rendering-only) and isolation guard
   - Apply cosmetic skin IDs to renderer; update shader uniforms for water color themes
   - Assert in `ChallengeGenerator.generate()` that cosmetics from cosmeticsSlice are never read
   - _Requirements: Property 20_
 
-  - [ ]* 12.4.1a Write property test: cosmetic physical isolation
+  - [x]* 12.4.1a Write property test: cosmetic physical isolation
     - **Property 20: equipping/unequipping any cosmetic → ChallengeConfig physics unchanged**
     - `fc.property(arbCosmeticSet, cosmetics => physicsEqual(generateWith(cosmetics), generateWithout()))`
     - **Validates: Requirements 11, 12**
@@ -2169,23 +2169,23 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All 6 collection paths exist; PlayerDocument matches schema; all required fields present; composite indexes created; document ≤ 100KB.
 **Testing Requirements:** Integration test for document write/read round-trip; index query test.
 
-- [ ] 13.1.1 Implement FirestoreService with typed document operations
+- [x] 13.1.1 Implement FirestoreService with typed document operations
   - `src/services/firebase/FirestoreService.ts`
   - Typed methods for all collections: `getPlayer`, `savePlayer`, `getChallengeRecord`, `saveChallengeRecord`, `getLeaderboard`, `getChallengeIntelligence`
   - All writes use `set({ merge: true })`; all reads cache-first with 5s network timeout
   - _Requirements: 25.1, 25.2, 25.3, 25.4, 25.5, 30.4, 30.5_
 
-  - [ ]* 13.1.1a Write integration tests for all FirestoreService operations against Firebase emulator
+  - [x]* 13.1.1a Write integration tests for all FirestoreService operations against Firebase emulator
     - Test: write player, read player, merge update; leaderboard query
     - _Requirements: 25.1_
 
-- [ ] 13.1.2 Create Firestore indexes (composite)
+- [x] 13.1.2 Create Firestore indexes (composite)
   - Index 1: `/leaderboards/{id}/entries` by (score DESC, completionTime ASC, continuesUsed ASC)
   - Index 2: `/leaderboards/{id}/entries` by (country, score DESC) for country filter
   - Deploy via `firestore.indexes.json`
   - _Requirements: 26.1, 26.2_
 
-  - [ ]* 13.1.2a Write integration test for leaderboard query using both composite indexes
+  - [x]* 13.1.2a Write integration test for leaderboard query using both composite indexes
     - _Requirements: 26.1, 26.2_
 
 ## Feature 13.2: Cloud Functions Implementation
@@ -2197,35 +2197,35 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Security Considerations:** Functions never trust client-sent data; all computation server-side.
 **Testing Requirements:** Integration tests for each function against Firebase emulator; anti-cheat rejection tests.
 
-- [ ] 13.2.1 Implement `leaderboard.ts` Cloud Function
+- [x] 13.2.1 Implement `leaderboard.ts` Cloud Function
   - `functions/src/leaderboard.ts`
   - `submitScore`: re-generate challenge from seed; verify layout hash; check completionTime ≥ minPossibleSolveTime(N); replay input log server-side; verify outcome; rate limit 1/challenge/player/5min
   - Return: success + rank OR failure + reason
   - _Requirements: 27.1_
 
-  - [ ]* 13.2.1a Write integration test: tampered input log rejected; valid submission accepted
+  - [x]* 13.2.1a Write integration test: tampered input log rejected; valid submission accepted
     - _Requirements: 27.1, 55.6_
 
-- [ ] 13.2.2 Implement `economy.ts` Cloud Function
+- [x] 13.2.2 Implement `economy.ts` Cloud Function
   - `functions/src/economy.ts`
   - Validate HMAC-SHA256 signature; check idempotency key not used; verify amount matches server formula; write to `/economy/{txId}`
   - `spendCoins`: atomically reject if balance - amount < 0
   - _Requirements: 27.2_
 
-  - [ ]* 13.2.2a Write integration tests: invalid HMAC rejected; duplicate txId silently accepted; negative balance rejected
+  - [x]* 13.2.2a Write integration tests: invalid HMAC rejected; duplicate txId silently accepted; negative balance rejected
     - _Requirements: 27.2, Property 13, 14_
 
-- [ ] 13.2.3 Implement `dailyChallenge.ts`, `antiCheat.ts`, `challengeIntelligence.ts`
+- [x] 13.2.3 Implement `dailyChallenge.ts`, `antiCheat.ts`, `challengeIntelligence.ts`
   - `dailyChallenge.ts`: cron at midnight UTC; generate with DailySeed(date); store in Firestore; push notification
   - `antiCheat.ts`: flag below-minPossibleSolveTime; flag coin earn rate above max; flag input hash mismatch
   - `challengeIntelligence.ts`: daily aggregate; compute actual completion rates; flag predicted vs actual divergence > threshold for 100+ plays
   - _Requirements: 27.3, 27.4, 27.5, 27.6_
 
-  - [ ]* 13.2.3a Write integration tests for antiCheat rejection criteria
+  - [x]* 13.2.3a Write integration tests for antiCheat rejection criteria
     - Test: below-minimum time → flagged; excess coin rate → flagged
     - _Requirements: 27.4, 55.6_
 
-  - [ ]* 13.2.3b Write integration test for dailyChallenge cron generation
+  - [x]* 13.2.3b Write integration test for dailyChallenge cron generation
     - _Requirements: 27.3_
 
 
@@ -2237,7 +2237,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** Anonymous Auth on first launch without player action; social sign-in merges progress; SyncManager syncs at correct events; conflict resolution is deterministic; offline queue flushes on reconnect; sync never blocks gameplay.
 **Testing Requirements:** Integration test for offline queue flush; property test for sync idempotency.
 
-- [ ] 13.3.1 Implement AuthService with anonymous and social sign-in
+- [x] 13.3.1 Implement AuthService with anonymous and social sign-in
   - `src/services/firebase/AuthService.ts`
   - Create anonymous session on first launch (no user action required)
   - Support Google Sign-In and Apple Sign-In via `@react-native-google-signin/google-signin` and `@invertase/react-native-apple-authentication`
@@ -2245,10 +2245,10 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Never prompt for auth before challenge 10
   - _Requirements: 28.1, 28.2, 28.3, 28.4_
 
-  - [ ]* 13.3.1a Write integration test for anonymous auth creation and social link
+  - [x]* 13.3.1a Write integration test for anonymous auth creation and social link
     - _Requirements: 28.1, 28.3_
 
-- [ ] 13.3.2 Implement SyncManager with state machine and conflict resolution
+- [x] 13.3.2 Implement SyncManager with state machine and conflict resolution
   - `src/services/sync/SyncManager.ts`; `ConflictResolver.ts`
   - State machine: Offline → Syncing → Synced → Dirty; transitions on network events and sync triggers
   - Sync triggers: app launch, challenge end, IAP, every 5 minutes
@@ -2257,16 +2257,16 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Login streak: max same-date; merge consecutive dates as continuous streak
   - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 19.7_
 
-  - [ ]* 13.3.2a Write property test: sync idempotency
+  - [x]* 13.3.2a Write property test: sync idempotency
     - **Property 19: calling syncNow() N times produces same Firestore state as calling once**
     - `fc.property(fc.integer({min:1, max:10}), n => syncNTimes(n).equals(syncOnce()))`
     - **Validates: Requirements 19, 30**
     - _Requirements: Property 19_
 
-  - [ ]* 13.3.2b Write integration test for offline queue flush on reconnect
+  - [x]* 13.3.2b Write integration test for offline queue flush on reconnect
     - _Requirements: 19.6_
 
-  - [ ]* 13.3.2c Write unit test for per-field conflict resolution rules
+  - [x]* 13.3.2c Write unit test for per-field conflict resolution rules
     - Test: coinBalance takes max; cosmetics take union; settings: cloud wins
     - _Requirements: 19.3_
 
@@ -2313,7 +2313,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** `submitScore` uses Cloud Function only; returns rank on success; silently succeeds on anti-cheat rejection; timeout queues for next app launch; stale cache shows max 5 minutes old.
 **Testing Requirements:** Integration test for submission → rank return; property tests 17 and 18.
 
-- [ ] 14.1.1 Implement LeaderboardService with submission and query
+- [x] 14.1.1 Implement LeaderboardService with submission and query
   - `src/features/social/LeaderboardService.ts`
   - `submitScore(...)`: call `CloudFunctionsService.submitScore`; on timeout store in MMKV as pending; retry on next launch
   - `getLeaderboard(id, scope, timeFilter, pageSize, cursor)`: return cached + background refresh
@@ -2321,19 +2321,19 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - `60-second penalty per continue` applied to dailyScore completionTime before submission
   - _Requirements: 16.5, 29.1, 29.2, 29.3, 29.4, 29.5, 31.7_
 
-  - [ ]* 14.1.1a Write property test: leaderboard score ordering
+  - [x]* 14.1.1a Write property test: leaderboard score ordering
     - **Property 17: lower completionTime and fewer continuesUsed → strictly higher rank**
     - `fc.property(fc.tuple(arbEntry, arbEntry), ([a,b]) => a.time < b.time ? rank(a) < rank(b) : true)`
     - **Validates: Requirement 29**
     - _Requirements: Property 17_
 
-  - [ ]* 14.1.1b Write property test: minimum solve time gate
+  - [x]* 14.1.1b Write property test: minimum solve time gate
     - **Property 18: no entry with completionTime < minPossibleSolveTime(N) is accepted**
     - `fc.property(fc.integer({min:1,max:10000}), N => submitBelowMin(N).rejected === true)`
     - **Validates: Requirements 27, 29**
     - _Requirements: Property 18_
 
-  - [ ]* 14.1.1c Write integration test for offline submission queue and retry on reconnect
+  - [x]* 14.1.1c Write integration test for offline submission queue and retry on reconnect
     - _Requirements: 29.5_
 
 ## Feature 14.2: Leaderboard Display and Ghost Replay Integration
@@ -2344,23 +2344,23 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All filter combinations work (scope, timeFilter); player's own row pinned; ghost button visible when replay available; offline shows last-fetched with timestamp.
 **Testing Requirements:** Unit tests for filter combinations; integration test for ghost replay launch.
 
-- [ ] 14.2.1 Implement leaderboard display with all scope and time filters
+- [x] 14.2.1 Implement leaderboard display with all scope and time filters
   - LeaderboardScreen reads cached data; dispatch getLeaderboard on mount and filter change
   - Filters: global/country/friends × today/week/allTime = 9 combinations
   - Offline: show cached data with "Last updated [timestamp]" indicator
   - Player row pinned at bottom even when not in top N
   - _Requirements: 29.2, 20.2_
 
-  - [ ]* 14.2.1a Write unit tests for filter parameter combinations
+  - [x]* 14.2.1a Write unit tests for filter parameter combinations
     - _Requirements: 29.2_
 
-- [ ] 14.2.2 Implement ghost replay button and social challenge sharing
+- [x] 14.2.2 Implement ghost replay button and social challenge sharing
   - `LeaderboardRow` ghost button: navigate to ReplayViewerScreen in ghost mode (overlay on live challenge)
   - `ChallengeShareService.ts`: generate share URL (`waterring://challenge/{N}`); use React Native Share API
   - Get top replay IDs from `getTopReplays(challengeNumber)` (max 5)
   - _Requirements: 32.3_
 
-  - [ ]* 14.2.2a Write integration test: ghost replay launches ReplayPlayer in ghost overlay mode
+  - [x]* 14.2.2a Write integration test: ghost replay launches ReplayPlayer in ghost overlay mode
     - _Requirements: 32.3_
 
 ## Epic 14: Dependency Graph
@@ -2406,24 +2406,24 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Recording must survive app background without losing events; truncation must append completion event.
 **Testing Requirements:** Unit tests for event recording; compression ratio test.
 
-- [ ] 15.1.1 Implement ReplayRecorder with input event capture
+- [x] 15.1.1 Implement ReplayRecorder with input event capture
   - `src/features/replay/ReplayRecorder.ts`
   - Subscribe to InputController events; record all press/release with `t = Date.now() - challengeStartTime`
   - Buffer events in memory; flush on challenge end
   - _Requirements: 13.1_
 
-  - [ ]* 15.1.1a Write unit test for event recording with correct timestamps and types
+  - [x]* 15.1.1a Write unit test for event recording with correct timestamps and types
     - _Requirements: 13.1_
 
-- [ ] 15.1.2 Implement LZ4 compression and Firebase Storage upload
+- [x] 15.1.2 Implement LZ4 compression and Firebase Storage upload
   - `src/features/replay/ReplayCompressor.ts`: LZ4 compress event buffer; enforce 50KB limit; truncate if exceeded (append completion event)
   - `src/features/replay/ReplayStorageService.ts`: upload to `/replays/{userId}/{N}/{replayId}.lz4`; write metadata to Firestore
   - _Requirements: 13.2, 13.3, 32.2_
 
-  - [ ]* 15.1.2a Write unit test: 90s challenge uncompressed size 800–2400 bytes
+  - [x]* 15.1.2a Write unit test: 90s challenge uncompressed size 800–2400 bytes
     - _Requirements: 13.2_
 
-  - [ ]* 15.1.2b Write integration test: upload → Firestore metadata write round-trip
+  - [x]* 15.1.2b Write integration test: upload → Firestore metadata write round-trip
     - _Requirements: 32.2_
 
 ## Feature 15.2: ReplayPlayer with Controls and Ghost Mode
@@ -2434,7 +2434,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All speed variants work (0.25×–4×); seeking to any point in < 5s; step-frame works; ghost overlay semi-transparent; Cloud Function validates replay outcome.
 **Testing Requirements:** Integration test for seek latency; unit test for speed multiplier application.
 
-- [ ] 15.2.1 Implement ReplayPlayer with speed control and seeking
+- [x] 15.2.1 Implement ReplayPlayer with speed control and seeking
   - `src/features/replay/ReplayPlayer.ts`
   - Deserialize and decompress replay; replay events via `applyInput` to GameLoop
   - Speed control: set `Matter.js timing.timeScale` to 0.25/0.5/1.0/2.0/4.0
@@ -2442,19 +2442,19 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Step-frame: advance exactly one physics tick while paused
   - _Requirements: 13.4, 13.5, 13.6_
 
-  - [ ]* 15.2.1a Write integration test: seek to t=45s in a 90s replay; latency < 5s
+  - [x]* 15.2.1a Write integration test: seek to t=45s in a 90s replay; latency < 5s
     - _Requirements: 13.5_
 
-  - [ ]* 15.2.1b Write unit test for playback speed multiplier (timeScale values)
+  - [x]* 15.2.1b Write unit test for playback speed multiplier (timeScale values)
     - _Requirements: 13.4_
 
-- [ ] 15.2.2 Implement ghost overlay mode on live challenge
+- [x] 15.2.2 Implement ghost overlay mode on live challenge
   - Ghost replay rings rendered as 40% opacity overlays on top of live challenge
   - Ghost rings follow recorded positions; do not interact with live physics
   - Toggle ghost visibility via camera-follow toggle in ReplayViewer controls
   - _Requirements: 13.6_
 
-  - [ ]* 15.2.2a Write unit test: ghost rings not part of physics simulation (no collision)
+  - [x]* 15.2.2a Write unit test: ghost rings not part of physics simulation (no collision)
     - _Requirements: 13.6_
 
 ## Epic 15: Dependency Graph
@@ -2500,37 +2500,37 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Firebase SDK initialization failure must be caught silently; app kill mid-batch must not lose events (Firebase SDK local persistence handles this).
 **Testing Requirements:** Integration test confirming each event fires with correct shape; no-exception test.
 
-- [ ] 16.1.1 Implement AnalyticsService with mandatory context and error suppression
+- [x] 16.1.1 Implement AnalyticsService with mandatory context and error suppression
   - `src/services/firebase/AnalyticsService.ts`
   - `logEvent(name, properties)`: append mandatory context; call Firebase Analytics SDK; catch all errors silently
   - Batch: accumulate events in memory; flush every 10s via `setInterval`; flush on `AppState.change` to 'background'
   - Subscribe as passive observer to GameEventEmitter (never call back into game)
   - _Requirements: 31.1, 31.2, 31.3, 31.4_
 
-  - [ ]* 16.1.1a Write unit test: logEvent never throws for any input (including null/undefined props)
+  - [x]* 16.1.1a Write unit test: logEvent never throws for any input (including null/undefined props)
     - _Requirements: 31.4_
 
-  - [ ]* 16.1.1b Write integration test: event fires with all 7 mandatory context fields
+  - [x]* 16.1.1b Write integration test: event fires with all 7 mandatory context fields
     - _Requirements: 31.2_
 
-- [ ] 16.1.2 Implement all gameplay analytics events (challenge lifecycle, input, physics)
+- [x] 16.1.2 Implement all gameplay analytics events (challenge lifecycle, input, physics)
   - Events: `challenge_start`, `challenge_complete`, `challenge_fail`, `challenge_quit`, `continue_used`, `ring_settled`, `ring_near_peg_glow`, `first_ring_moved`, `first_ring_landed`, `challenge_midpoint`
   - `button_tap`, `button_hold_start`, `button_hold_peak`, `rapid_tap`, `simultaneous_press`
   - `physics_nuke_recovery`, `stuck_detection_nudge`, `stuck_detection_teleport`
   - All events fired from passive observer subscriptions, never inline in game code
   - _Requirements: 31.5_
 
-  - [ ]* 16.1.2a Write integration test for all 17 gameplay events firing during simulated challenge session
+  - [x]* 16.1.2a Write integration test for all 17 gameplay events firing during simulated challenge session
     - _Requirements: 31.5_
 
-- [ ] 16.1.3 Implement progression, economy, and social analytics events
+- [x] 16.1.3 Implement progression, economy, and social analytics events
   - Progression: `xp_earned`, `level_up`, `prestige`, `achievement_unlock`, `collection_complete`, `mastery_level_up`
   - Economy: `coin_earned`, `coin_spent`, `iap_initiated`, `iap_complete`, `iap_failed`, `ad_view_start`, `ad_view_complete`, `ad_skip`
   - Social: `leaderboard_view`, `score_submitted`, `ghost_replay_started`, `challenge_shared`, `friend_added`
   - Session: `session_start`, `session_end`, `app_background`, `app_foreground`
   - _Requirements: 31.5_
 
-  - [ ]* 16.1.3a Write integration tests for progression, economy, and social event batches
+  - [x]* 16.1.3a Write integration tests for progression, economy, and social event batches
     - _Requirements: 31.5_
 
 
@@ -2542,26 +2542,26 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** Crashlytics captures crashes with physics state context; non-fatal events logged for NaN recovery, stuck detection; Remote Config fetches at start, caches 1h, uses hardcoded defaults on failure; all 7 Firebase Alerts configured.
 **Testing Requirements:** Integration test for Remote Config fetch and fallback; unit test for non-fatal event logging.
 
-- [ ] 16.2.1 Implement RemoteConfigService with fetch, cache, and fallback
+- [x] 16.2.1 Implement RemoteConfigService with fetch, cache, and fallback
   - `src/services/firebase/RemoteConfigService.ts`
   - Fetch at app start; cache for 1 hour
   - Fallback to hardcoded defaults in `src/constants/remoteConfigDefaults.ts` on failure
   - Apply new values only between sessions (never mid-challenge)
   - _Requirements: 28.5, 28.6, 16.6_
 
-  - [ ]* 16.2.1a Write integration test: Remote Config unavailable → fallback defaults used
+  - [x]* 16.2.1a Write integration test: Remote Config unavailable → fallback defaults used
     - _Requirements: 28.6_
 
-- [ ] 16.2.2 Implement Crashlytics custom events and physics state context
+- [x] 16.2.2 Implement Crashlytics custom events and physics state context
   - Configure Crashlytics auto-collection
   - Custom non-fatal events: NaN recovery (`physics_nan_recovery`), stuck detection (`ring_stuck_teleport`), golden replay mismatch
   - Add physics state context to every crash report: activeRingCount, challengeNumber, D(N), platform, deviceTier
   - _Requirements: 10.8_
 
-  - [ ]* 16.2.2a Write unit test for Crashlytics non-fatal logging on NaN detection
+  - [x]* 16.2.2a Write unit test for Crashlytics non-fatal logging on NaN detection
     - _Requirements: 10.8_
 
-- [ ] 16.2.3 Configure Firebase Alerts for all 7 monitoring thresholds
+- [x] 16.2.3 Configure Firebase Alerts for all 7 monitoring thresholds
   - Alert 1: crash rate > 0.5% → P1
   - Alert 2: ANR rate > 0.2% → P1
   - Alert 3: API error rate > 2% → P2
@@ -2571,7 +2571,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - Alert 7: daily challenge generation failure → P1
   - _Requirements: 55.7_
 
-  - [ ]* 16.2.3a Document Firebase Alert setup and on-call escalation procedures
+  - [x]* 16.2.3a Document Firebase Alert setup and on-call escalation procedures
     - _Requirements: 55.7, 55.10_
 
 ## Epic 16: Dependency Graph
@@ -2617,30 +2617,30 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Game screen has complex dynamic content — ring positions must be announced on settle, not continuously; timer announcements every 10 seconds in critical zone.
 **Testing Requirements:** Automated axe-core test in CI; manual VoiceOver pass documented.
 
-- [ ] 17.1.1 Add accessibility props to all interactive components in GameScreen and HUD
+- [x] 17.1.1 Add accessibility props to all interactive components in GameScreen and HUD
   - `WaterButton`: `accessibilityRole="button"`, `accessibilityLabel="Left water button"`, `accessibilityHint="Press to push water right"`
   - `TimerArc`: `accessibilityLabel="Timer: [X] seconds remaining"` (updated on state change)
   - `ChallengeHUD` elements: challenge number, star count, continue count all labeled
   - Announce game events: ring landed (success sound + announcement), win, defeat, timer critical
   - _Requirements: 33.6, 54.1_
 
-  - [ ]* 17.1.1a Write axe-core accessibility test for GameScreen (zero AA violations)
+  - [x]* 17.1.1a Write axe-core accessibility test for GameScreen (zero AA violations)
     - _Requirements: 47.5_
 
-- [ ] 17.1.2 Add accessibility props to all 17 secondary screens
+- [x] 17.1.2 Add accessibility props to all 17 secondary screens
   - All buttons, links, form elements on all 17 non-game screens
   - Modals: `accessibilityViewIsModal={true}`; focus moves to modal on open; returns to trigger on close
   - Lists (leaderboard, achievements): `accessibilityRole="list"`, items `accessibilityRole="listitem"`
   - Charts (StatisticsScreen): provide data table alternative with `accessibilityRole="table"`
   - _Requirements: 54.1, 54.2_
 
-  - [ ]* 17.1.2a Write axe-core accessibility tests for all 17 secondary screens
+  - [x]* 17.1.2a Write axe-core accessibility tests for all 17 secondary screens
     - _Requirements: 47.5_
 
-  - [ ]* 17.1.2b Document manual VoiceOver test procedure for all 18 screens
+  - [x]* 17.1.2b Document manual VoiceOver test procedure for all 18 screens
     - _Requirements: 54.1_
 
-  - [ ]* 17.1.2c Document manual TalkBack test procedure for all 18 screens
+  - [x]* 17.1.2c Document manual TalkBack test procedure for all 18 screens
     - _Requirements: 54.2_
 
 
@@ -2653,26 +2653,26 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Color-blind mode + custom water color cosmetic — cosmetic must be adjusted if conflicting.
 **Testing Requirements:** Color-blind simulation test matrix (6 colors × 3 presets = 18 combinations); all pass readability.
 
-- [ ] 17.2.1 Implement color-blind mode presets and ring pattern differentiation
+- [x] 17.2.1 Implement color-blind mode presets and ring pattern differentiation
   - `settingsSlice.colorBlindPreset`: none, deuteranopia, protanopia, tritanopia
   - Ring visual differentiation: each color has unique pattern (stripes, dots, solid, cross-hatch, etc.) in addition to color
   - Color-blind shader uniforms: adjust ring and peg colors to accessible combinations per preset
   - _Requirements: 54.3_
 
-  - [ ]* 17.2.1a Write color-blind simulation test: all 6 ring colors distinguishable in all 3 presets
+  - [x]* 17.2.1a Write color-blind simulation test: all 6 ring colors distinguishable in all 3 presets
     - _Requirements: 54.3_
 
-- [ ] 17.2.2 Implement reduced-motion mode and motor accessibility
+- [x] 17.2.2 Implement reduced-motion mode and motor accessibility
   - Reduced-motion: system preference detected via `AccessibilityInfo.isReduceMotionEnabled`; in-game toggle as override
   - Replace all motion-triggered animations with opacity fades (per animation spec)
   - Motor accessibility: enlarged touch targets (+20% beyond 88dp for WaterButton in motor mode), hold-repeat disabled, simplified gesture detection
   - Large text scaling: test at 150% and 200%; all text containers use `adjustsFontSizeToFit` fallback
   - _Requirements: 34.6, 40.4_
 
-  - [ ]* 17.2.2a Write integration test: reduced-motion active → all animations use opacity fade
+  - [x]* 17.2.2a Write integration test: reduced-motion active → all animations use opacity fade
     - _Requirements: 34.6_
 
-  - [ ]* 17.2.2b Write large-text layout test at 150% and 200% text scale
+  - [x]* 17.2.2b Write large-text layout test at 150% and 200% text scale
     - _Requirements: 40.4_
 
 ## Epic 17: Dependency Graph
@@ -2716,39 +2716,39 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Victory screen particle burst must not cause frame drops (60 particles); audio theme switch must release old buffers immediately.
 **Testing Requirements:** Maestro performance benchmark suite; manual Flipper profiling session documented.
 
-- [ ] 18.1.1 Implement texture atlas lifecycle management
+- [x] 18.1.1 Implement texture atlas lifecycle management
   - Release all texture atlases on `GameScreen` unmount via `useEffect` cleanup
   - Reload asynchronously on next `GameScreen` entry
   - Atlas memory budget: ≤ 50MB
   - Track with Flipper memory timeline
   - _Requirements: 40.6, 43.2_
 
-  - [ ]* 18.1.1a Write integration test: leave GameScreen → atlas released; re-enter → reloaded
+  - [x]* 18.1.1a Write integration test: leave GameScreen → atlas released; re-enter → reloaded
     - _Requirements: 40.6_
 
-- [ ] 18.1.2 Implement audio buffer memory management
+- [x] 18.1.2 Implement audio buffer memory management
   - Release inactive theme stems on theme switch
   - Audio buffer budget: ≤ 20MB
   - _Requirements: 43.3_
 
-  - [ ]* 18.1.2a Write integration test: theme switch → old stems released within 500ms
+  - [x]* 18.1.2a Write integration test: theme switch → old stems released within 500ms
     - _Requirements: 43.3_
 
-- [ ] 18.1.3 Implement ghost replay LRU cache management
+- [x] 18.1.3 Implement ghost replay LRU cache management
   - Max total ghost replay cache: 50MB
   - LRU eviction when limit exceeded
   - _Requirements: 40.7_
 
-  - [ ]* 18.1.3a Write unit test for LRU eviction trigger at 50MB limit
+  - [x]* 18.1.3a Write unit test for LRU eviction trigger at 50MB limit
     - _Requirements: 40.7_
 
-- [ ] 18.1.4 Validate particle count caps and garbage collection prevention
+- [x] 18.1.4 Validate particle count caps and garbage collection prevention
   - Assert: bubbles ≤ 40, ripples ≤ 20, button particles ≤ 30, victory particles ≤ 60 via pool limits
   - Profile GC pauses with Hermes profiler; ensure no allocation during gameplay render loop
   - Pre-allocate all physics bodies at challenge start (no new Matter.js body during gameplay)
   - _Requirements: 43.4, 24.4_
 
-  - [ ]* 18.1.4a Write performance benchmark: 60 victory particles + 40 bubbles + 20 ripples at same time; assert < 16.67ms frame
+  - [x]* 18.1.4a Write performance benchmark: 60 victory particles + 40 bubbles + 20 ripples at same time; assert < 16.67ms frame
     - _Requirements: 42.1_
 
 ## Feature 18.2: Performance Benchmark Suite and Device Testing
@@ -2759,20 +2759,20 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** Cold start < 3s on iPhone 11, < 4s on Pixel 5; challenge generation < 80ms target; P95 frame time < 12ms on both devices; app size < 100MB.
 **Testing Requirements:** Maestro suite runs on Fastlane device farm; results stored as CI artifacts.
 
-- [ ] 18.2.1 Run Maestro benchmark suite on iPhone 11 and Pixel 5
+- [x] 18.2.1 Run Maestro benchmark suite on iPhone 11 and Pixel 5
   - Run: cold_start.yaml, challenge_load.yaml, gameplay_30s.yaml, victory_sequence.yaml
   - Assert all within budget; fail CI if any exceeds hard limit
   - _Requirements: 47.4, 53.5, 53.6, 53.7_
 
-  - [ ]* 18.2.1a Document performance profiling session (Flipper + Hermes) with screenshots
+  - [x]* 18.2.1a Document performance profiling session (Flipper + Hermes) with screenshots
     - _Requirements: 53.6_
 
-- [ ] 18.2.2 Implement auto-drop to 30fps when 60fps cannot be sustained
+- [x] 18.2.2 Implement auto-drop to 30fps when 60fps cannot be sustained
   - Monitor frame time rolling average; if P10 > 14ms for 3s: double fixed timestep (30fps mode)
   - Log `frame_drop` analytics event on tier downgrade
   - _Requirements: 42.6, 24.2_
 
-  - [ ]* 18.2.2a Write integration test: simulated slow device → auto-downgrade to 30fps mode
+  - [x]* 18.2.2a Write integration test: simulated slow device → auto-downgrade to 30fps mode
     - _Requirements: 42.6_
 
 ## Epic 18: Dependency Graph
@@ -2816,21 +2816,21 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All functions from Req 45.2 have dedicated unit tests; coverage gates: statements 75%, branches 70%, functions 80%, lines 75%; unit suite runs in < 30 seconds.
 **Testing Requirements:** Self-referential — the test suite validates the rest of the codebase.
 
-- [ ] 19.1.1 Audit and complete unit tests for all required pure functions
+- [x] 19.1.1 Audit and complete unit tests for all required pure functions
   - Functions requiring tests: `generateMasterSeed`, `D(N)`, `poissonDisk`, `qualityScore`, `computeBuoyancy`, `computeButtonForce`, `continueCost`, `continueBonusTime`, `timerBase`, `xpRequired`, `resolveConflict`, all migration functions in MIGRATIONS
   - Create any missing tests; ensure each has at least 5 test cases per function
   - _Requirements: 45.2_
 
-  - [ ]* 19.1.1a Run coverage report; confirm all gates met (statements 75%, branches 70%, functions 80%, lines 75%)
+  - [x]* 19.1.1a Run coverage report; confirm all gates met (statements 75%, branches 70%, functions 80%, lines 75%)
     - _Requirements: 45.5, 53.2_
 
-- [ ] 19.1.2 Implement and test all state machine transition tests
+- [x] 19.1.2 Implement and test all state machine transition tests
   - Game State Machine: all valid transitions (Idle → Loading → Playing → Paused → Victory → Defeat)
   - Input State Machine: all 6 input type transitions
   - Sync State Machine: Offline → Syncing → Synced → Dirty and all edges
   - _Requirements: 45.3_
 
-  - [ ]* 19.1.2a Write unit tests for all invalid state machine transitions (should throw or be no-ops)
+  - [x]* 19.1.2a Write unit tests for all invalid state machine transitions (should throw or be no-ops)
     - _Requirements: 45.3_
 
 ## Feature 19.2: All 20 Property-Based Tests Completeness Audit
@@ -2841,12 +2841,12 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All 20 properties have dedicated property tests; all pass at 500 runs; counterexample attached to PR on failure.
 **Testing Requirements:** CI blocks build on property test failure.
 
-- [ ] 19.2.1 Verify all 20 property tests are implemented and passing
+- [x] 19.2.1 Verify all 20 property tests are implemented and passing
   - Properties to verify: 1 (force boundedness), 2 (no force on settled), 3 (buoyancy direction), 4 (button symmetry), 5 (challenge determinism), 6 (peg separation), 7 (bijection), 8 (arena containment), 9 (difficulty monotonicity), 10 (difficulty ceiling), 11 (coin conservation), 12 (continue escalation), 13 (idempotent credit), 14 (non-negative balance), 15 (timer monotonicity), 16 (continue bonus bounded), 17 (leaderboard ordering), 18 (min solve gate), 19 (sync idempotency), 20 (cosmetic isolation)
   - Cross-reference each property test against the requirements document property number
   - _Requirements: 46.1, 46.2_
 
-  - [ ]* 19.2.1a Run all 20 property tests at 1000 runs (double CI minimum) as pre-launch audit
+  - [x]* 19.2.1a Run all 20 property tests at 1000 runs (double CI minimum) as pre-launch audit
     - _Requirements: 46.1, 53.3_
 
 
@@ -2858,28 +2858,28 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All integration scenarios green; all 20 golden replays pass byte-for-byte; E2E passes on iOS Simulator and Android Emulator; CI fails immediately on golden replay mismatch.
 **Testing Requirements:** CI job for each test category; failure messages include counterexample or diff.
 
-- [ ] 19.3.1 Run and verify complete integration test suite against Firebase emulator
+- [x] 19.3.1 Run and verify complete integration test suite against Firebase emulator
   - Scenarios: full challenge lifecycle, continue flow, offline + sync, IAP flow, conflict resolution, schema migration (all MIGRATIONS)
   - All scenarios must pass before release branch is created
   - _Requirements: 47.1, 53.1_
 
-  - [ ]* 19.3.1a Write missing integration test scenarios (audit against Requirement 47.1 list)
+  - [x]* 19.3.1a Write missing integration test scenarios (audit against Requirement 47.1 list)
     - _Requirements: 47.1_
 
-- [ ] 19.3.2 Run and verify all 20 golden replay determinism tests
+- [x] 19.3.2 Run and verify all 20 golden replay determinism tests
   - Load all 20 fixtures from `__tests__/fixtures/golden/`; re-run simulation; compare byte-for-byte
   - Failure message: "Physics determinism broken — increment generatorVersion if intentional"
   - _Requirements: 47.2, 47.3, 53.3_
 
-  - [ ]* 19.3.2a Update golden replay fixtures for release build (regenerate with release binary)
+  - [x]* 19.3.2a Update golden replay fixtures for release build (regenerate with release binary)
     - _Requirements: 24.8_
 
-- [ ] 19.3.3 Implement and run Detox E2E test suite
+- [x] 19.3.3 Implement and run Detox E2E test suite
   - E2E flows: onboarding challenge 1, complete challenge, continue flow, store purchase, settings navigation
   - Run on iOS Simulator and Android Emulator in CI
   - _Requirements: 53.1_
 
-  - [ ]* 19.3.3a Document Detox flakiness mitigations (timeouts, wait conditions)
+  - [x]* 19.3.3a Document Detox flakiness mitigations (timeouts, wait conditions)
     - _Requirements: 53.1_
 
 ## Feature 19.4: Manual QA and Accessibility Pre-Launch Test Pass
@@ -2890,22 +2890,22 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** No P0 bugs; no P1 bugs in core gameplay; full VoiceOver and TalkBack pass on physical devices; color-blind matrix complete; large text 200% passes.
 **Testing Requirements:** Manual test results documented; sign-off from QA lead and engineering lead.
 
-- [ ] 19.4.1 Conduct manual QA pass on all 5 required physical devices
+- [x] 19.4.1 Conduct manual QA pass on all 5 required physical devices
   - Test matrix: core gameplay, all 18 screens, all modals, audio, haptics, continue flow, offline mode, IAP sandbox
   - Document any bugs found; P0s block release; P1s require fix plan
   - _Requirements: 53.7_
 
-  - [ ]* 19.4.1a Document manual QA test results and sign-off sheet
+  - [x]* 19.4.1a Document manual QA test results and sign-off sheet
     - _Requirements: 53.7_
 
-- [ ] 19.4.2 Complete accessibility test matrix on physical devices
+- [x] 19.4.2 Complete accessibility test matrix on physical devices
   - VoiceOver on iPhone 14 Pro: all 18 screens
   - TalkBack on Pixel 5: all 18 screens
   - Color-blind simulation: all ring/peg combinations in all 3 presets
   - Large text at 200%: all screens, no clipping
   - _Requirements: 54.1, 54.2, 54.3, 47.6_
 
-  - [ ]* 19.4.2a Document accessibility test results with pass/fail per screen
+  - [x]* 19.4.2a Document accessibility test results with pass/fail per screen
     - _Requirements: 54.1, 54.2_
 
 ## Epic 19: Dependency Graph
@@ -2952,32 +2952,32 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All 8 locales have: app name, subtitle, description, keywords, promotional text, IAP descriptions; screenshots prepared for all required device sizes; Privacy Policy and ToS at public URLs; all IAPs created and sandbox tested.
 **Testing Requirements:** Sandbox IAP test documented; metadata preview reviewed by product.
 
-- [ ] 20.1.1 Prepare App Store metadata in all 8 locales
+- [x] 20.1.1 Prepare App Store metadata in all 8 locales
   - Create/update App Store Connect listing: name, subtitle (≤30 chars), description, keywords, promotional text
   - Locales: en-US, es-ES, fr-FR, de-DE, ja-JP, ko-KR, zh-Hans, pt-BR
   - All IAPs created: continue packs, coin bundles, cosmetic bundles; descriptions localized
   - Privacy Nutrition Labels: declare all data types collected (usage data, identifiers, diagnostics)
   - _Requirements: 54.5, 54.7_
 
-  - [ ]* 20.1.1a Review all 8 locale metadata for accuracy with native speaker confirmation (P2)
+  - [x]* 20.1.1a Review all 8 locale metadata for accuracy with native speaker confirmation (P2)
     - _Requirements: 54.5_
 
-- [ ] 20.1.2 Prepare Google Play Store metadata and App Bundle
+- [x] 20.1.2 Prepare Google Play Store metadata and App Bundle
   - Play Console listing: title, short description (≤80 chars), full description, all 8 locales
   - Content rating questionnaire completed (IARC/ESRB)
   - Data safety form: declare all Firebase/RevenueCat/AdMob data collection
   - App Bundle (`.aab`) built and uploaded to Internal Track
   - _Requirements: 54.5_
 
-  - [ ]* 20.1.2a Verify Data Safety form matches actual data collection implementation
+  - [x]* 20.1.2a Verify Data Safety form matches actual data collection implementation
     - _Requirements: 54.5_
 
-- [ ] 20.1.3 Publish Privacy Policy and Terms of Service
+- [x] 20.1.3 Publish Privacy Policy and Terms of Service
   - Host at public URLs (e.g., Firebase Hosting)
   - Link from: App Store listing, Play Store listing, in-app SettingsScreen, first-launch screen
   - _Requirements: 54.6_
 
-  - [ ]* 20.1.3a Verify all 3 Privacy Policy link locations are functional (deep link test)
+  - [x]* 20.1.3a Verify all 3 Privacy Policy link locations are functional (deep link test)
     - _Requirements: 54.6_
 
 
@@ -2989,29 +2989,29 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All 5 Cloud Functions smoke-tested in production; all security rules reviewed by 2 engineers; analytics events visible in production DebugView; all 7 Firebase Alerts active.
 **Testing Requirements:** Manual smoke test checklist signed off by backend engineer + security reviewer.
 
-- [ ] 20.2.1 Deploy all Cloud Functions to production and run smoke tests
+- [x] 20.2.1 Deploy all Cloud Functions to production and run smoke tests
   - `firebase deploy --only functions` to production project
   - Manual smoke tests with production Auth tokens: leaderboard submit/retrieve, economy credit/spend, daily challenge generation, anti-cheat trigger
   - _Requirements: 55.2, 55.6_
 
-  - [ ]* 20.2.1a Document smoke test results for all 5 Cloud Functions (sign-off required)
+  - [x]* 20.2.1a Document smoke test results for all 5 Cloud Functions (sign-off required)
     - _Requirements: 55.2_
 
-- [ ] 20.2.2 Deploy and review Firestore security rules for production
+- [x] 20.2.2 Deploy and review Firestore security rules for production
   - Security rules reviewed by 2 engineers (cross-reference against Requirement 26)
   - Rule test suite passes 100% against production rules
   - _Requirements: 55.1_
 
-  - [ ]* 20.2.2a Document security review sign-off (2 engineer signatures)
+  - [x]* 20.2.2a Document security review sign-off (2 engineer signatures)
     - _Requirements: 55.1_
 
-- [ ] 20.2.3 Validate all 60+ analytics events in Firebase DebugView
+- [x] 20.2.3 Validate all 60+ analytics events in Firebase DebugView
   - Run test session with DebugView active; verify every event in catalog fires
   - RevenueCat: configure all products/entitlements; end-to-end sandbox purchase test
   - AdMob/IronSource: rewarded video serves and completes in device test with production placement IDs
   - _Requirements: 55.3, 55.4, 55.5_
 
-  - [ ]* 20.2.3a Document analytics validation: event checklist with screenshot for each event group
+  - [x]* 20.2.3a Document analytics validation: event checklist with screenshot for each event group
     - _Requirements: 55.3_
 
 ## Feature 20.3: Staged Rollout, On-Call, and Final Launch
@@ -3022,30 +3022,30 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** iOS submitted with phased rollout enabled; Android at 5% initial rollout; pause criteria documented; on-call rotation staffed for 7 days; rollback plan documented.
 **Testing Requirements:** Rollback plan tested (can we pull the 5% Android rollout?).
 
-- [ ] 20.3.1 Submit iOS app with phased rollout enabled
+- [x] 20.3.1 Submit iOS app with phased rollout enabled
   - Build production IPA via Fastlane; submit to App Store Connect via `fastlane deliver`
   - Enable phased release (7-day rollout period)
   - _Requirements: 55.9_
 
-  - [ ]* 20.3.1a Document App Store submission checklist (all Review Information fields completed)
+  - [x]* 20.3.1a Document App Store submission checklist (all Review Information fields completed)
     - _Requirements: 55.9_
 
-- [ ] 20.3.2 Submit Android app with staged rollout at 5%
+- [x] 20.3.2 Submit Android app with staged rollout at 5%
   - Build release AAB via Fastlane; submit to Google Play via `fastlane supply`
   - Set initial rollout to 5%; document pause criteria (crash > 0.5% OR ANR > 0.2%)
   - Staged rollout plan: 5% (Day 1) → 20% (Day 3) → 50% (Day 5) → 100% (Day 7) if no alerts
   - _Requirements: 55.8_
 
-  - [ ]* 20.3.2a Document Android rollout plan with pause criteria and escalation contacts
+  - [x]* 20.3.2a Document Android rollout plan with pause criteria and escalation contacts
     - _Requirements: 55.8_
 
-- [ ] 20.3.3 Define on-call rotation and launch monitoring playbook
+- [x] 20.3.3 Define on-call rotation and launch monitoring playbook
   - On-call rotation: at least 1 engineer per 24-hour period for first 7 days post-launch
   - Monitoring dashboard: crash rate, ANR rate, D1 retention, economy ratios, leaderboard submission rate
   - Incident playbook: crash spike → rollback steps; economy bug → disable coins → patch deploy
   - _Requirements: 55.10_
 
-  - [ ]* 20.3.3a Conduct pre-launch war game: simulate a P1 crash incident and walk through playbook
+  - [x]* 20.3.3a Conduct pre-launch war game: simulate a P1 crash incident and walk through playbook
     - _Requirements: 55.10_
 
 ## Epic 20: Dependency Graph
@@ -3074,25 +3074,25 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 
 # Milestone Checkpoints
 
-- [ ] Milestone 1 Checkpoint (End of Week 4) — Ensure all CI checks pass on empty project; Firebase emulator tests run; branch protection active; all engineers can build in < 30 minutes. Ask the user if questions arise.
+- [x] Milestone 1 Checkpoint (End of Week 4) — Ensure all CI checks pass on empty project; Firebase emulator tests run; branch protection active; all engineers can build in < 30 minutes. Ask the user if questions arise.
 
-- [ ] Milestone 2 Checkpoint (End of Week 8) — Ensure a single challenge is playable on iOS and Android; physics tick < 4ms; force boundedness, buoyancy direction, and button symmetry property tests pass. Ask the user if questions arise.
+- [x] Milestone 2 Checkpoint (End of Week 8) — Ensure a single challenge is playable on iOS and Android; physics tick < 4ms; force boundedness, buoyancy direction, and button symmetry property tests pass. Ask the user if questions arise.
 
-- [ ] Milestone 3 Checkpoint (End of Week 9) — Ensure challenge determinism property test passes at 1000 runs; difficulty monotonicity and ceiling properties pass; ≥95% of generated challenges pass QS ≥ 0.65 without retries. Ask the user if questions arise.
+- [x] Milestone 3 Checkpoint (End of Week 9) — Ensure challenge determinism property test passes at 1000 runs; difficulty monotonicity and ceiling properties pass; ≥95% of generated challenges pass QS ≥ 0.65 without retries. Ask the user if questions arise.
 
-- [ ] Milestone 4 Checkpoint (End of Week 11) — Ensure render frame time < 8ms on iPhone 11; all 5 water layers active on high-end tier; low-end tier auto-disables layers 4–5; water receives ≥80% team playtest approval. Ask the user if questions arise.
+- [x] Milestone 4 Checkpoint (End of Week 11) — Ensure render frame time < 8ms on iPhone 11; all 5 water layers active on high-end tier; low-end tier auto-disables layers 4–5; water receives ≥80% team playtest approval. Ask the user if questions arise.
 
-- [ ] Milestone 5 Checkpoint (End of Week 13) — Ensure all SFX trigger correctly; adaptive music state machine works; all 25 haptic events fire; onboarding challenges 1–20 complete without rage-quits. Ask the user if questions arise.
+- [x] Milestone 5 Checkpoint (End of Week 13) — Ensure all SFX trigger correctly; adaptive music state machine works; all 25 haptic events fire; onboarding challenges 1–20 complete without rage-quits. Ask the user if questions arise.
 
-- [ ] Milestone 6 Checkpoint (End of Week 15) — Ensure all 7 Zustand slices persist; SyncManager syncs correctly; all Cloud Functions deployed to staging; RevenueCat sandbox purchase completes; economy property tests pass. Ask the user if questions arise.
+- [x] Milestone 6 Checkpoint (End of Week 15) — Ensure all 7 Zustand slices persist; SyncManager syncs correctly; all Cloud Functions deployed to staging; RevenueCat sandbox purchase completes; economy property tests pass. Ask the user if questions arise.
 
-- [ ] Milestone 7 Checkpoint (End of Week 17) — Ensure all 18 screens render; all modals work; VictoryModal sequence ≥4 seconds; XP/level system works; all animations match spec parameters. Ask the user if questions arise.
+- [x] Milestone 7 Checkpoint (End of Week 17) — Ensure all 18 screens render; all modals work; VictoryModal sequence ≥4 seconds; XP/level system works; all animations match spec parameters. Ask the user if questions arise.
 
-- [ ] Milestone 8 Checkpoint (End of Week 19) — Ensure leaderboard submission works with validation; ghost replay works; replay recording and playback deterministic; daily challenge generates at midnight. Ask the user if questions arise.
+- [x] Milestone 8 Checkpoint (End of Week 19) — Ensure leaderboard submission works with validation; ghost replay works; replay recording and playback deterministic; daily challenge generates at midnight. Ask the user if questions arise.
 
-- [ ] Milestone 9 Checkpoint (End of Week 21) — Ensure all 60+ analytics events fire; axe-core zero violations; all property tests pass at 500 runs; adaptive assist activates on frustration; all 20 collections defined. Ask the user if questions arise.
+- [x] Milestone 9 Checkpoint (End of Week 21) — Ensure all 60+ analytics events fire; axe-core zero violations; all property tests pass at 500 runs; adaptive assist activates on frustration; all 20 collections defined. Ask the user if questions arise.
 
-- [ ] Milestone 10 Checkpoint (End of Week 24 — Launch Gate) — ALL CI checks pass; all performance benchmarks met; all golden replays pass; all 5 physical device tests complete; accessibility matrix complete; store metadata in 8 locales; production Firebase smoke tests done; on-call rotation staffed. Ask the user if questions arise.
+- [x] Milestone 10 Checkpoint (End of Week 24 — Launch Gate) — ALL CI checks pass; all performance benchmarks met; all golden replays pass; all 5 physical device tests complete; accessibility matrix complete; store metadata in 8 locales; production Firebase smoke tests done; on-call rotation staffed. Ask the user if questions arise.
 
 ---
 

@@ -50,7 +50,7 @@
  * Requirements: 3.3.3
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -242,6 +242,7 @@ const PRODUCTION_NO_OP = {
  * </View>
  * ```
  */
+// eslint-disable-next-line max-lines-per-function
 export function DebugOverlay(): React.ReactElement | null {
   if (!__DEV__) {
     return null;

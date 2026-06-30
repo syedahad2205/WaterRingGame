@@ -71,6 +71,7 @@ const defaultOnboardingState: OnboardingState = {
 
 export const useOnboardingStore = create<OnboardingStore>()(
   persist(
+    // eslint-disable-next-line max-lines-per-function
     (set) => ({
       ...defaultOnboardingState,
 

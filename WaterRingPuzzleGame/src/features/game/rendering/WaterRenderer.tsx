@@ -24,7 +24,7 @@
  * Requirements: 38.1, 4.3, 41.3, 41.4, 41.5
  */
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import { useSharedValue, useFrameCallback } from 'react-native-reanimated';
 
@@ -76,6 +76,7 @@ const SURFACE_SAMPLE_COUNT = 60;
  * Skia for GPU rasterisation.  When `isActive` is false the frame callback
  * is paused (dirty-flag optimisation, Requirement 4.3).
  */
+// eslint-disable-next-line max-lines-per-function
 export default function WaterRenderer({
   width,
   height,

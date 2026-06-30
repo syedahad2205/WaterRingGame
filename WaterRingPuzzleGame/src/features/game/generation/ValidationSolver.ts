@@ -259,6 +259,7 @@ export class ValidationSolver {
    *
    * @param config - The fully constructed ChallengeConfig to evaluate.
    */
+  // eslint-disable-next-line max-lines-per-function
   public validate(config: ChallengeConfig): SolvabilityResult {
     const { rings, pegs, timer, arena } = config;
     const timerSeconds = timer.totalSeconds;

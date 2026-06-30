@@ -98,7 +98,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
  */
 export class RemoteConfigService {
   private _activeValues: RemoteConfigValues = { ...DEFAULTS };
-  private _lastFetchTime: number = 0;
+  private _lastFetchTime = 0;
 
   /**
    * Fetches the latest Remote Config from Firebase and activates it.

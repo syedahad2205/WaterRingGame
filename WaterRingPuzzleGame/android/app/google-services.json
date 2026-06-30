@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "373705216896",
+    "project_id": "water-ring-game",
+    "storage_bucket": "water-ring-game.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:373705216896:android:0822841ba287f53428e765",
+        "android_client_info": {
+          "package_name": "com.syntaxandco.waterring"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "373705216896-fcm5f2ttbdkk6eteu4j5s1rl13ju6cmm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBI-g5dojLEbT_T8Vcv9DV2-orDrQsNlQo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "373705216896-fcm5f2ttbdkk6eteu4j5s1rl13ju6cmm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

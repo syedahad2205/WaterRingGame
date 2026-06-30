@@ -135,6 +135,7 @@ interface GameScreenProps {
  *
  * Requirements: 7.1.1, 7.1.2
  */
+// eslint-disable-next-line max-lines-per-function
 export default function GameScreen({ route, navigation }: GameScreenProps): React.JSX.Element {
   const bridge = usePhysicsSharedState();
 

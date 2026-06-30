@@ -51,7 +51,7 @@ For **Authentication**, enable the following sign-in providers:
 
 1. In your Firebase project, go to **Project Settings** (gear icon)
 2. Click **Add app** → Android
-3. Enter the Android package name: `com.waterringpuzzlegame`
+3. Enter the Android package name: `com.syntaxandco.waterringgame`
 4. (Optional) Enter app nickname: `WaterRingPuzzleGame Android`
 5. Click **Register app**
 6. Download `google-services.json`
@@ -64,7 +64,7 @@ For **Authentication**, enable the following sign-in providers:
 
 1. In your Firebase project, go to **Project Settings**
 2. Click **Add app** → iOS
-3. Enter the iOS bundle ID: `com.waterringpuzzlegame`
+3. Enter the iOS bundle ID: `com.syntaxandco.waterringgame`
 4. (Optional) Enter app nickname: `WaterRingPuzzleGame iOS`
 5. Click **Register app**
 6. Download `GoogleService-Info.plist`

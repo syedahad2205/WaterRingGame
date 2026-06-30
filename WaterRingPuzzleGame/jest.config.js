@@ -39,6 +39,13 @@ const sharedModuleNameMapper = {
   '^@constants/(.*)$': '<rootDir>/src/constants/$1',
   '^@types/(.*)$': '<rootDir>/src/types/$1',
   '^@assets/(.*)$': '<rootDir>/src/assets/$1',
+  // Stub firebase compat modules not installed in this project
+  '^firebase/compat/database$': '<rootDir>/__mocks__/firebase/compat/database.js',
+  '^firebase/compat/firestore$': '<rootDir>/__mocks__/firebase/compat/firestore.js',
+  '^firebase/compat/auth$': '<rootDir>/__mocks__/firebase/compat/auth.js',
+  '^firebase/compat/app$': '<rootDir>/__mocks__/firebase/compat/app.js',
+  '^firebase/compat/storage$': '<rootDir>/__mocks__/firebase/compat/storage.js',
+  '^firebase/compat/functions$': '<rootDir>/__mocks__/firebase/compat/functions.js',
 };
 
 const config = {
@@ -72,11 +79,15 @@ const config = {
       transform: {
         '^.+\\.(ts|tsx|js|jsx)$': babelTransform,
       },
-      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'native', 'json'],
       moduleNameMapper: sharedModuleNameMapper,
+      setupFilesAfterEnv: ['<rootDir>/__tests__/unit/setup.ts'],
       testPathIgnorePatterns: [
         '/node_modules/',
         '/coverage/',
+      ],
+      transformIgnorePatterns: [
+        'node_modules/(?!(react-native|@react-native|@react-native-firebase|react-native-reanimated|react-native-mmkv|@shopify/react-native-skia|@react-navigation|react-native-gesture-handler|react-native-haptic-feedback|react-native-sound)/)',
       ],
     },
     {
@@ -86,11 +97,14 @@ const config = {
       transform: {
         '^.+\\.(ts|tsx|js|jsx)$': babelTransform,
       },
-      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'native', 'json'],
       moduleNameMapper: sharedModuleNameMapper,
       testPathIgnorePatterns: [
         '/node_modules/',
         '/coverage/',
+      ],
+      transformIgnorePatterns: [
+        'node_modules/(?!(react-native|@react-native|@react-native-firebase|react-native-reanimated|react-native-mmkv|@shopify/react-native-skia|@react-navigation|react-native-gesture-handler|react-native-haptic-feedback|react-native-sound)/)',
       ],
       setupFilesAfterEnv: ['<rootDir>/__tests__/property/setup.ts'],
     },
@@ -103,12 +117,16 @@ const config = {
       transform: {
         '^.+\\.(ts|tsx|js|jsx)$': babelTransform,
       },
-      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'native', 'json'],
       moduleNameMapper: sharedModuleNameMapper,
       testPathIgnorePatterns: [
         '/node_modules/',
         '/coverage/',
       ],
+      transformIgnorePatterns: [
+        'node_modules/(?!(react-native|@react-native|@react-native-firebase|react-native-reanimated|react-native-mmkv|@shopify/react-native-skia|@react-navigation|react-native-gesture-handler|react-native-haptic-feedback|react-native-sound)/)',
+      ],
+      setupFilesAfterEnv: ['<rootDir>/__tests__/integration/setup.ts'],
     },
   ],
 };

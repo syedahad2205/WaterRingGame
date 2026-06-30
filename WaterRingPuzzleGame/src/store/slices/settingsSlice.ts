@@ -3,6 +3,7 @@
  * language preference, and graphics quality tier.
  *
  * Requirements: 17.4, 18.1, 18.2, 18.4
+ * Epic 17 additions: 34.6, 40.4, 54.1, 54.2, 54.3
  * Persists to MMKV key: 'settings_slice'
  */
 
@@ -43,11 +44,15 @@ export interface SettingsState {
   // Haptics
   hapticsEnabled: boolean;
   hapticIntensity: number;
-  // Accessibility
+  // Accessibility (original fields)
   reducedMotion: boolean;
   colorBlindMode: boolean;
   colorBlindPreset: ColorBlindPreset;
   highContrast: boolean;
+  // Accessibility (Epic 17 additions — Requirements 34.6, 40.4, 54.1, 54.2, 54.3)
+  reducedMotionOverride: boolean;
+  motorAccessibilityMode: boolean;
+  largeTextMode: boolean;
   // Language and quality
   language: string;
   graphicsQuality: GraphicsQuality;
@@ -59,6 +64,11 @@ export interface SettingsActions {
   updateAccessibility: (accessibility: Partial<AccessibilitySettings>) => void;
   updateLanguage: (language: string) => void;
   setGraphicsQuality: (quality: GraphicsQuality) => void;
+  // Epic 17 granular accessors (Requirements 34.6, 40.4, 54.1, 54.2, 54.3)
+  setColorBlindPreset: (preset: ColorBlindPreset) => void;
+  setReducedMotionOverride: (enabled: boolean) => void;
+  setMotorAccessibilityMode: (enabled: boolean) => void;
+  setLargeTextMode: (enabled: boolean) => void;
 }
 
 export type SettingsStore = SettingsState & SettingsActions;
@@ -77,6 +87,10 @@ const defaultSettingsState: SettingsState = {
   colorBlindMode: false,
   colorBlindPreset: 'none',
   highContrast: false,
+  // Epic 17 defaults
+  reducedMotionOverride: false,
+  motorAccessibilityMode: false,
+  largeTextMode: false,
   language: 'en',
   graphicsQuality: 'high',
 };
@@ -115,6 +129,19 @@ export const useSettingsStore = create<SettingsStore>()(
 
       setGraphicsQuality: (graphicsQuality: GraphicsQuality): void =>
         set({ graphicsQuality }),
+
+      // Epic 17 granular actions
+      setColorBlindPreset: (colorBlindPreset: ColorBlindPreset): void =>
+        set({ colorBlindPreset }),
+
+      setReducedMotionOverride: (reducedMotionOverride: boolean): void =>
+        set({ reducedMotionOverride }),
+
+      setMotorAccessibilityMode: (motorAccessibilityMode: boolean): void =>
+        set({ motorAccessibilityMode }),
+
+      setLargeTextMode: (largeTextMode: boolean): void =>
+        set({ largeTextMode }),
     }),
     {
       name: 'settings_slice',
@@ -140,3 +167,9 @@ export const selectHighContrast = (state: SettingsStore): boolean => state.highC
 export const selectLanguage = (state: SettingsStore): string => state.language;
 export const selectGraphicsQuality = (state: SettingsStore): GraphicsQuality =>
   state.graphicsQuality;
+// Epic 17 selectors
+export const selectReducedMotionOverride = (state: SettingsStore): boolean =>
+  state.reducedMotionOverride;
+export const selectMotorAccessibilityMode = (state: SettingsStore): boolean =>
+  state.motorAccessibilityMode;
+export const selectLargeTextMode = (state: SettingsStore): boolean => state.largeTextMode;

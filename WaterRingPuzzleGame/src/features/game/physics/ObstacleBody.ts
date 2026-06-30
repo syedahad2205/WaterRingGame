@@ -63,6 +63,7 @@ const WALL_FRICTION = 0.1;
  *
  * Requirements: 21.4, 21.5
  */
+// eslint-disable-next-line max-lines-per-function
 export function createArenaWalls(arenaLayout: ArenaLayout): Matter.Body[] {
   const { width, height } = arenaLayout;
 

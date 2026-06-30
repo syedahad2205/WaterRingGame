@@ -15,7 +15,6 @@
 
 import { Platform } from 'react-native';
 import RNHapticFeedback, {
-  HapticFeedbackTypes,
   type HapticEvent as RNHapticEvent,
 } from 'react-native-haptic-feedback';
 
@@ -264,7 +263,7 @@ type SettingsUnsubscribeFn = () => void;
 
 export class HapticManager {
   private _supported: boolean;
-  private _globalIntensity: number = 1.0;
+  private _globalIntensity = 1.0;
 
   /** Timestamps (ms) of recent collision haptic events for throttling. */
   private _collisionTimestamps: number[] = [];
@@ -305,7 +304,7 @@ export class HapticManager {
   initialize(): SettingsUnsubscribeFn {
     try {
       // Lazy import to support test environments that don't have the full store.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
       const { useSettingsStore } = require('@store/slices/settingsSlice') as {
         useSettingsStore: {
           getState: () => { hapticsEnabled: boolean; hapticIntensity: number };
@@ -333,7 +332,7 @@ export class HapticManager {
     } catch (err) {
       // Graceful degradation — settings store unavailable (e.g. test environment)
       console.warn('[HapticManager] initialize: could not connect to settingsSlice (non-fatal):', err);
-      const noop = (): void => {};
+      const noop = (): void => { /* intentional no-op */ };
       return noop;
     }
   }
@@ -491,5 +490,41 @@ export class HapticManager {
 
     this._collisionTimestamps.push(now);
     return true;
+  }
+
+  // ── Static singleton helpers (convenience API for non-DI callers) ─────────
+
+  private static _instance: HapticManager | null = null;
+
+  private static _getInstance(): HapticManager {
+    if (!HapticManager._instance) {
+      HapticManager._instance = new HapticManager();
+    }
+    return HapticManager._instance;
+  }
+
+  /** Static convenience: trigger on the shared singleton instance. */
+  static trigger(event: HapticEvent): void {
+    HapticManager._getInstance().trigger(event);
+  }
+
+  /** Static convenience: set global intensity on the shared singleton. */
+  static setGlobalIntensity(scale: number): void {
+    HapticManager._getInstance().setGlobalIntensity(scale);
+  }
+
+  /** Static convenience: enable or disable haptics globally. */
+  static setEnabled(enabled: boolean): void {
+    HapticManager._getInstance().setGlobalIntensity(enabled ? 1 : 0);
+  }
+
+  /** Static convenience: cancel all haptics on the shared singleton. */
+  static cancelAll(): void {
+    HapticManager._getInstance().cancelAll();
+  }
+
+  /** Static convenience: check support on the shared singleton. */
+  static isSupported(): boolean {
+    return HapticManager._getInstance().isSupported();
   }
 }

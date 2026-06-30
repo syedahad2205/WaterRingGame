@@ -186,6 +186,35 @@ export class GameEventEmitterClass {
   listenerCount(eventName: GameEventName): number {
     return this._listeners.get(eventName)?.size ?? 0;
   }
+
+  /**
+   * General-purpose emit for named events that fall outside the 9 typed
+   * GameEventNames (e.g. achievement_unlocked).  Stored in a separate map so
+   * they never collide with the typed dispatch path.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly _generalListeners: Map<string, Set<(payload: any) => void>> = new Map();
+
+  emit(eventName: string, payload?: unknown): void {
+    const set = this._generalListeners.get(eventName);
+    if (!set || set.size === 0) return;
+    const snapshot = Array.from(set);
+    for (const listener of snapshot) {
+      listener(payload);
+    }
+  }
+
+  on(eventName: string, listener: (payload: unknown) => void): () => void {
+    if (!this._generalListeners.has(eventName)) {
+      this._generalListeners.set(eventName, new Set());
+    }
+    this._generalListeners.get(eventName)!.add(listener);
+    return () => this._generalListeners.get(eventName)?.delete(listener);
+  }
+
+  off(eventName: string, listener: (payload: unknown) => void): void {
+    this._generalListeners.get(eventName)?.delete(listener);
+  }
 }
 
 // ---------------------------------------------------------------------------
