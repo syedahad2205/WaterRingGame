@@ -2,7 +2,9 @@
   "coldStartMs": {
     "target": 3000,
     "hardLimit": 5000,
-    "referenceDevice": "iPhone 11"
+    "referenceDevice": "iPhone 11",
+    "maestroFlow": "__tests__/maestro/perf_baseline.yaml",
+    "notes": "Wall-clock from launchApp to home-screen assertVisible. Physical devices only."
   },
   "coldStartAndroidMs": {
     "target": 3500,
@@ -11,7 +13,9 @@
   },
   "challengeLoadMs": {
     "target": 500,
-    "hardLimit": 1000
+    "hardLimit": 1000,
+    "maestroFlow": "__tests__/maestro/perf_baseline.yaml",
+    "notes": "Wall-clock from Play tap to challenge-screen assertVisible."
   },
   "challengeGenerationMs": {
     "target": 80,
@@ -24,7 +28,9 @@
   "p95FrameTimeMs": {
     "target": 12,
     "hardLimit": 16.67,
-    "referenceDevice": "iPhone 11"
+    "referenceDevice": "iPhone 11",
+    "maestroFlow": "__tests__/maestro/perf_baseline.yaml",
+    "notes": "P95 frame time measured during 30-second gameplay loop. Must stay below 16.67 ms (60 fps floor)."
   },
   "maxHeapMB": {
     "target": 150,

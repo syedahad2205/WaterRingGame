@@ -208,7 +208,7 @@ function checkTimerExpiry(state: LoopState, dt: number): void {
       state.timerExpireCallback();
     }
     // Stop the loop — challenge is over.
-    stopLoop(state);
+    cancelRafLoop(state);
   }
 }
 
@@ -240,6 +240,28 @@ function saveCheckpoint(state: LoopState): void {
     setItem(CHECKPOINT_KEY, JSON.stringify(physicsState));
   } catch {
     // PhysicsWorld may not be initialised yet during unit tests.
+  }
+}
+
+/**
+ * Read the last persisted checkpoint from MMKV and restore PhysicsWorld state.
+ *
+ * Returns true if a checkpoint was found and successfully restored, false if no
+ * checkpoint exists or the stored data could not be parsed.
+ *
+ * Requirements: 9.6, 18.3
+ */
+export function restoreFromCheckpoint(): boolean {
+  try {
+    const raw = getItem(CHECKPOINT_KEY);
+    if (raw === null) {
+      return false;
+    }
+    const physicsState = JSON.parse(raw) as import('../physics/PhysicsWorld').SerializedPhysicsState;
+    PhysicsWorld.restoreState(physicsState);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -311,7 +333,7 @@ function writeToSharedValues(state: LoopState, alpha: number): void {
 /**
  * Unconditionally stop the rAF loop without changing the win/loss state.
  */
-function stopLoop(state: LoopState): void {
+function cancelRafLoop(state: LoopState): void {
   if (state.rafId !== null) {
     cancelAnimationFrame(state.rafId);
     state.rafId = null;
@@ -359,7 +381,7 @@ function frame(state: LoopState, now: number): void {
       if (state.winCallback) {
         state.winCallback();
       }
-      stopLoop(state);
+      cancelRafLoop(state);
     });
 
     // 5. checkTimerExpiry
@@ -405,7 +427,7 @@ function frame(state: LoopState, now: number): void {
 function start(config: GameLoopConfig): void {
   // Tear down any existing loop.
   if (_loop) {
-    stopLoop(_loop);
+    cancelRafLoop(_loop);
     PhysicsWorld.destroy();
     WinCondition.reset();
   }
@@ -463,7 +485,7 @@ function stop(): void {
     return;
   }
   saveCheckpoint(_loop);
-  stopLoop(_loop);
+  cancelRafLoop(_loop);
   _loop.winLossState = 'idle';
   PhysicsWorld.destroy();
   WinCondition.reset();
@@ -581,6 +603,87 @@ export const GameLoop = {
   onTimerExpire,
   getCurrentState,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Simplified worklet-compatible top-level function exports
+// ---------------------------------------------------------------------------
+
+/**
+ * Start a lightweight callback-driven tick loop without a full GameLoopConfig.
+ *
+ * Useful for worklet-adjacent callers that need a repeating fixed-timestep
+ * callback without wiring up the full physics bridge. The provided `callback`
+ * is invoked once per fixed timestep (16.67 ms) using requestAnimationFrame.
+ *
+ * Call `stopLoop()` to cancel the loop. Only one lightweight loop can run at a
+ * time; calling `startLoop` again replaces any existing lightweight loop.
+ *
+ * Note: this lightweight loop is independent of `GameLoop.start()` / the full
+ * physics loop.  Do not mix the two APIs in the same challenge session.
+ *
+ * Requirements: 9.1, 9.2
+ */
+let _lightLoopRafId: ReturnType<typeof requestAnimationFrame> | null = null;
+let _lightLoopLastTime: number = 0;
+let _lightLoopAccumulator: number = 0;
+let _lightLoopTickCount: number = 0;
+
+export function startLoop(callback: () => void): void {
+  // Cancel any previous lightweight loop.
+  if (_lightLoopRafId !== null) {
+    cancelAnimationFrame(_lightLoopRafId);
+    _lightLoopRafId = null;
+  }
+  _lightLoopAccumulator = 0;
+  _lightLoopTickCount = 0;
+  _lightLoopLastTime = performance.now();
+
+  function tick(now: number): void {
+    if (_lightLoopRafId === null) {
+      // Loop was stopped externally — do nothing.
+      return;
+    }
+    const rawDelta = now - _lightLoopLastTime;
+    const delta = Math.max(0, Math.min(rawDelta, MAX_FRAME_LAG_MS));
+    _lightLoopLastTime = now;
+    _lightLoopAccumulator += delta;
+
+    while (_lightLoopAccumulator >= FIXED_TIMESTEP_MS) {
+      callback();
+      _lightLoopTickCount++;
+      _lightLoopAccumulator -= FIXED_TIMESTEP_MS;
+    }
+
+    _lightLoopRafId = requestAnimationFrame(tick);
+  }
+
+  _lightLoopRafId = requestAnimationFrame(tick);
+}
+
+/**
+ * Stop the lightweight callback loop started by `startLoop()`.
+ *
+ * Safe to call even if `startLoop()` was never called.
+ *
+ * Requirements: 9.1
+ */
+export function stopLoop(): void {
+  if (_lightLoopRafId !== null) {
+    cancelAnimationFrame(_lightLoopRafId);
+    _lightLoopRafId = null;
+  }
+  _lightLoopAccumulator = 0;
+}
+
+/**
+ * Return the total number of fixed-timestep ticks fired since the last
+ * `startLoop()` call. Returns 0 if no lightweight loop is active.
+ *
+ * Requirements: 9.1
+ */
+export function getTickCount(): number {
+  return _lightLoopTickCount;
+}
 
 // ---------------------------------------------------------------------------
 // Test-internal helpers (not part of the public API)

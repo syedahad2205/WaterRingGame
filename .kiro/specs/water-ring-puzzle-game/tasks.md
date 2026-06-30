@@ -264,12 +264,12 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 1.6.1a Write unit test for benchmark classification thresholds
     - _Requirements: 24.3, 44.4_
 
-- [ ] 1.6.2 Create Maestro E2E baseline measurement flow
+- [x] 1.6.2 Create Maestro E2E baseline measurement flow
   - Measure: cold start time (tap to HomeScreen interactive), challenge load time
   - Store baseline values in `__tests__/perf-baselines.json`
   - _Requirements: 47.4, 53.5, 53.6_
 
-  - [ ]* 1.6.2a Document how to run Maestro tests on physical devices
+  - [x]* 1.6.2a Document how to run Maestro tests on physical devices
     - _Requirements: 47.4_
 
 ## Epic 1: Dependency Graph
@@ -476,7 +476,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** App backgrounding must pause loop cleanly; resuming from background must not produce spiral-of-death; device lock screen must pause physics.
 **Testing Requirements:** Unit tests for tick-order assertions; integration test for background/foreground cycle.
 
-- [ ] 3.1.1 Implement GameLoop fixed-timestep orchestrator in Reanimated Worklet
+- [x] 3.1.1 Implement GameLoop fixed-timestep orchestrator in Reanimated Worklet
   - `src/features/game/core/GameLoop.ts`
   - Expose: `start(config)`, `stop()`, `pause()`, `resume()`, `applyInput(input)`, `onWin(cb)`, `onTimerExpire(cb)`, `getCurrentState()`
   - Fixed timestep: 16.67ms; accumulator pattern; max lag cap: 5 frames (83.35ms)
@@ -487,7 +487,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - Test: verify each tick step executes in correct order; test lag cap fires at 5 frames
     - _Requirements: 9.2, 9.3_
 
-- [ ] 3.1.2 Implement position interpolation for smooth rendering at variable refresh rates
+- [x] 3.1.2 Implement position interpolation for smooth rendering at variable refresh rates
   - `alpha = accumulator / FIXED_TIMESTEP`
   - Interpolate ring positions: `renderPos = prevPos + (currentPos - prevPos) * alpha`
   - Write interpolated positions to Reanimated shared values
@@ -496,7 +496,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 3.1.2a Write unit test for interpolation formula at alpha 0, 0.5, and 1.0
     - _Requirements: 9.5_
 
-- [ ] 3.1.3 Implement MMKV checkpoint serialization (1-second interval + triggers)
+- [x] 3.1.3 Implement MMKV checkpoint serialization (1-second interval + triggers)
   - 1-second interval: serialize physics state to MMKV `challenge_checkpoint`
   - Immediate triggers: challenge start, challenge end, continue granted, pause
   - On restore: deserialize from checkpoint and resume from saved physics state
@@ -515,7 +515,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Simultaneous press on older Android devices with touch latency over 80ms; rapid tap counter must reset correctly.
 **Testing Requirements:** Unit tests for all 6 detection algorithms; property test for timing edge cases.
 
-- [ ] 3.2.1 Implement InputController state machine and all 6 detection algorithms
+- [x] 3.2.1 Implement InputController state machine and all 6 detection algorithms
   - `src/features/game/core/InputController.ts`
   - Expose: `onLeftPress`, `onLeftRelease`, `onRightPress`, `onRightRelease`, `getCurrentInputState`, `reset`
   - Implement tap detection (< 150ms), hold detection (150–1500ms), long hold (> 1500ms)
@@ -551,7 +551,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Ring leaving peg during 500ms window resets counter; near-miss bonus time added correctly.
 **Testing Requirements:** Unit tests for win condition stability window; property test for timer monotonicity.
 
-- [ ] 3.3.1 Implement WinCondition checker with 500ms stability window
+- [x] 3.3.1 Implement WinCondition checker with 500ms stability window
   - `src/features/game/core/WinCondition.ts`
   - Each tick: check all required ring-peg pairs are satisfied
   - Maintain stability counter; reset on any pair breaking
@@ -566,7 +566,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - **Property: win only fires when all ring-peg pairs satisfied AND stable 500ms**
     - _Requirements: 23.5_
 
-- [ ] 3.3.2 Implement TimerController with countdown and continue bonus time
+- [x] 3.3.2 Implement TimerController with countdown and continue bonus time
   - `src/features/game/core/TimerController.ts`
   - Countdown in fixed timestep; fire `timer_expired` at zero
   - Expose `addBonusTime(seconds)` for continue grants
@@ -685,7 +685,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Force at arena edges; turbulence seed from input timestamp; drag higher at arena bottom.
 **Testing Requirements:** Property tests for all 5 force properties (Properties 1–4).
 
-- [ ] 4.2.1 Implement Layer 1: Directional Button Force
+- [x] 4.2.1 Implement Layer 1: Directional Button Force
   - `F_button(x, side, intensity) = BASE_FORCE × intensity × (1 - |x - sourceX| / ScreenWidth) × DirectionVector`
   - Left button → rightward force; Right button → leftward force
   - Force applied via `beforeUpdate` event handler
@@ -697,7 +697,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - **Validates: Requirement 22**
     - _Requirements: Property 4_
 
-- [ ] 4.2.2 Implement Layer 2: Background Current Force
+- [x] 4.2.2 Implement Layer 2: Background Current Force
   - Persistent ambient force from seed-determined current profile
   - `CurrentMagnitude = BASE_CURRENT × (1 + ND × CURRENT_SCALE)`
   - Apply as constant force each tick in the current direction
@@ -706,7 +706,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 4.2.2a Write unit test for current magnitude scaling with difficulty
     - _Requirements: 22.3_
 
-- [ ] 4.2.3 Implement Layer 3: Buoyancy Force
+- [x] 4.2.3 Implement Layer 3: Buoyancy Force
   - `F_buoy = BUOYANCY_BASE × ring.buoyancy × (y - waterSurface) / arenaHeight`
   - Always upward (y component ≤ 0); deeper rings feel more upward pull
   - Apply as `beforeUpdate` handler
@@ -718,7 +718,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - **Validates: Requirement 22**
     - _Requirements: Property 3_
 
-- [ ] 4.2.4 Implement Layer 4: Turbulence Force
+- [x] 4.2.4 Implement Layer 4: Turbulence Force
   - Triggered by rapid-tap input event
   - `F_turb = BaseForce × TURBULENCE_FACTOR × RandomUnit(θ ± 45°, seed=inputTimestamp)`
   - Use xoshiro128** PRNG seeded from input timestamp
@@ -727,7 +727,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 4.2.4a Write unit test for turbulence force direction bounds (±45° range)
     - _Requirements: 22.5_
 
-- [ ] 4.2.5 Implement drag model and force accumulation
+- [x] 4.2.5 Implement drag model and force accumulation
   - Linear drag: `v(t+1) = v(t) × (1 - linearDamping × dt)`; angular drag similar
   - Higher drag near arena bottom (factor scales with y position)
   - Force boundedness check: total force per ring capped at MAX_WATER_FORCE
@@ -1087,13 +1087,13 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - **Validates: Requirement 11**
     - _Requirements: Property 10_
 
-- [ ] 6.2.2 Implement MasterSeed and DailySeed derivation
+- [x] 6.2.2 Implement MasterSeed and DailySeed derivation
   - `MasterSeed(N) = xoshiro128_init(splitmix64(N × PRIME_A + SALT_GLOBAL))`
   - `DailySeed(date) = xoshiro128_init(splitmix64(UnixDayNumber(date) × PRIME_B + SALT_DAILY))`
   - Challenge code encoding: `Base36(N) + "-" + LuhnCheckDigit(N)`
   - _Requirements: 11.1_
 
-  - [ ]* 6.2.2a Write unit test for challenge code encoding/decoding (Base36 + Luhn)
+  - [x]* 6.2.2a Write unit test for challenge code encoding/decoding (Base36 + Luhn)
     - Test: N=527 → "EJ-8"; decode "EJ-8" → N=527
     - _Requirements: 11.1_
 
@@ -1107,7 +1107,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Maximum 5 seed-offset retries on validation failure; quality below threshold reduces difficulty one step after 5 retries.
 **Testing Requirements:** Property test for challenge determinism (1000 runs); property tests for peg separation and bijection.
 
-- [ ] 6.3.1 Implement Poisson Disk peg placement (Step 5)
+- [x] 6.3.1 Implement Poisson Disk peg placement (Step 5)
   - `src/features/game/generation/ChallengeGenerator.ts` (step 5 logic)
   - Poisson disk sampling using forked PRNG; minimum separation = `minPegSeparation(D(N))`
   - All peg positions within arena bounds
@@ -1119,7 +1119,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - **Validates: Requirement 11**
     - _Requirements: Property 6_
 
-- [ ] 6.3.2 Implement ring placement, obstacle placement, and bijection (Steps 6–7)
+- [x] 6.3.2 Implement ring placement, obstacle placement, and bijection (Steps 6–7)
   - Ring initial positions in upper half of arena with minimum separation
   - Ring-to-peg assignment: bijection (one-to-one, no sharing)
   - Decoy rings assigned no target peg
@@ -1132,7 +1132,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - **Validates: Requirement 11**
     - _Requirements: Property 7_
 
-- [ ] 6.3.3 Implement water current, timer, physics modifiers, environment (Steps 8–11)
+- [x] 6.3.3 Implement water current, timer, physics modifiers, environment (Steps 8–11)
   - Step 8: CurrentX = random [-1,1]; magnitude scales with ND
   - Step 9: `TimerBase = 180 - 120 × ND`; add variance; apply template multiplier
   - Step 10: modifier selection with probability `min(0.6, ND × 0.8)`
@@ -1203,7 +1203,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Template combinations in forbidden list must be rejected by validator.
 **Testing Requirements:** Unit tests for template selection weights at each difficulty range.
 
-- [ ] 6.5.1 Implement TemplateRegistry with all 24 template definitions
+- [x] 6.5.1 Implement TemplateRegistry with all 24 template definitions
   - `src/features/game/generation/TemplateRegistry.ts`
   - Templates include: Standard, Precision, Moving Pegs, Limited Presses, Strong Current, Pressure Zones, Maze Navigation, Boss variants, and all others from design.md
   - Each template: physics modifiers, timer multiplier, first-appearance challenge number, weight function
@@ -1665,7 +1665,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** SFX file not loaded (missing asset) must not crash; max concurrent SFX to prevent audio overload.
 **Testing Requirements:** Integration test for each SFX trigger event mapping.
 
-- [ ] 9.1.1 Implement AudioEngine orchestrator with three-layer management
+- [x] 9.1.1 Implement AudioEngine orchestrator with three-layer management
   - `src/features/audio/AudioEngine.ts`
   - Expose all methods from Requirement 14.1
   - Manage three independent layers: SFX, Ambient, Music
@@ -1675,7 +1675,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 9.1.1a Write unit tests for AudioEngine state machine (pause/resume/victory/defeat)
     - _Requirements: 14.1_
 
-- [ ] 9.1.2 Implement SFXManager with all gameplay SFX events
+- [x] 9.1.2 Implement SFXManager with all gameplay SFX events
   - `src/features/audio/SFXManager.ts`
   - All SFX from design catalog: button tap/hold, ring collisions, ring landing, timer events, victory, defeat, etc.
   - Spatial panning: ring-ring collision SFX panned by x-position relative to screen center
@@ -1737,7 +1737,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** All 25 events trigger correct pattern; unsupported devices: no-op without errors; global intensity scales all amplitudes; collision throttle 3/100ms; ring landing haptic is most satisfying event.
 **Testing Requirements:** Unit tests for all 25 event pattern definitions; integration test for capability detection.
 
-- [ ] 9.3.1 Implement HapticManager with capability detection and all 25 events
+- [x] 9.3.1 Implement HapticManager with capability detection and all 25 events
   - `src/features/audio/HapticManager.ts`
   - Expose: `trigger(event)`, `triggerPattern(pattern)`, `cancelAll()`, `setGlobalIntensity(scale)`, `isSupported()`
   - Detect iOS Taptic Engine vs basic vibrator; detect Android API 26+ VibrationEffect vs legacy
@@ -1753,7 +1753,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 9.3.1b Write unit test: unsupported device → trigger() is no-op without error
     - _Requirements: 15.2_
 
-- [ ] 9.3.2 Implement global intensity scaling and settings integration
+- [x] 9.3.2 Implement global intensity scaling and settings integration
   - `setGlobalIntensity(scale)`: multiply all amplitude values by scale
   - At 0% intensity: all haptics suppressed (no vibration)
   - Read initial intensity from `settingsSlice.hapticIntensity`; subscribe to setting changes

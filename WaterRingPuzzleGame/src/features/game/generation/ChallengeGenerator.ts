@@ -43,21 +43,21 @@ const WATER_SURFACE_Y = ARENA_HEIGHT * 0.05;
  */
 const PEG_DIFFICULTY_DIVISOR = 12.5;
 
-/** Poisson disk: minimum separation at ND=0 (easy challenges). */
-const PEG_MIN_SEPARATION_BASE = 120;
-
-/** Poisson disk: reduction factor across the difficulty range. */
-const PEG_SEPARATION_ND_SCALE = 0.4;
-
 /** Maximum Poisson disk attempts per active point before discarding it. */
 const POISSON_MAX_ATTEMPTS = 30;
 
-/** Active zone: centre 70% of arena width, bottom 40% of arena height. */
-const PEG_ZONE_X_MARGIN_FRACTION = 0.15; // (1 - 0.70) / 2
+/**
+ * Peg zone: 10% padding from each edge of the arena.
+ * Active peg zone = centre 80% width, bottom 40% height.
+ */
+const PEG_ZONE_X_MARGIN_FRACTION = 0.10; // 10% padding each side
 const PEG_ZONE_Y_START_FRACTION = 0.60; // bottom 40% → starts at 60%
 
-/** Ring initial positions: upper 40% of arena (y ∈ [waterSurfaceY, 40%]). */
-const RING_ZONE_Y_END_FRACTION = 0.40;
+/**
+ * Ring initial positions: upper 20% of arena (near water surface).
+ * y ∈ [waterSurfaceY, 20% of arenaHeight]
+ */
+const RING_ZONE_Y_END_FRACTION = 0.20;
 
 /** Minimum initial separation between ring spawn positions. */
 const RING_MIN_SEPARATION = 60;
@@ -206,13 +206,23 @@ function buildPegs(
   colorIds: string[],
 ): PegConfig[] {
   const count = clamp(2 + Math.floor(d / PEG_DIFFICULTY_DIVISOR), 2, 8);
-  const minSeparation = PEG_MIN_SEPARATION_BASE * (1 - PEG_SEPARATION_ND_SCALE * nd);
+
+  // Compute peg base radius first (needed for min separation).
+  const baseRadius = Math.max(10, 28 * (1 - 0.5 * nd));
+
+  /**
+   * Minimum peg separation: the larger of:
+   *  - pegRadius × 2.5  (pegs need enough space relative to their size)
+   *  - arenaWidth × 0.12 (absolute minimum to keep pegs readable)
+   * Design reference: design.md § Step 5
+   */
+  const minSeparation = Math.max(baseRadius * 2.5, ARENA_WIDTH * 0.12);
 
   const zone: Zone = {
     xMin: ARENA_WIDTH * PEG_ZONE_X_MARGIN_FRACTION,
     xMax: ARENA_WIDTH * (1 - PEG_ZONE_X_MARGIN_FRACTION),
     yMin: ARENA_HEIGHT * PEG_ZONE_Y_START_FRACTION,
-    yMax: ARENA_HEIGHT * 0.95, // leave margin at the bottom
+    yMax: ARENA_HEIGHT * 0.90, // 10% margin at the bottom
   };
 
   // Run Poisson disk with full minSeparation.
@@ -236,7 +246,6 @@ function buildPegs(
 
   return positions.slice(0, count).map((pos, idx) => {
     const colorId = colorIds[idx % colorIds.length];
-    const baseRadius = Math.max(10, 28 * (1 - 0.5 * nd));
     const tipRadius = baseRadius * 0.35;
 
     return {

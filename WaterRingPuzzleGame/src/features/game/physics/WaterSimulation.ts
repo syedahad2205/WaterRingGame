@@ -17,6 +17,18 @@
 
 import Matter from 'matter-js';
 
+import {
+  BASE_WATER_FORCE as PHYSICS_BASE_WATER_FORCE,
+  MAX_WATER_FORCE as PHYSICS_MAX_WATER_FORCE,
+  BUOYANCY_BASE as PHYSICS_BUOYANCY_BASE,
+  WATER_SURFACE_FRACTION as PHYSICS_WATER_SURFACE_FRACTION,
+  TURBULENCE_FACTOR as PHYSICS_TURBULENCE_FACTOR,
+  CURRENT_STRENGTH_MULTIPLIER as PHYSICS_CURRENT_STRENGTH_MULTIPLIER,
+  DRAG_DEPTH_SCALE as PHYSICS_DRAG_DEPTH_SCALE,
+  BUTTON_H_FACTOR,
+  BUTTON_V_FACTOR,
+} from '../../../constants/physics';
+
 import type { ChallengeConfig, WaterCurrentProfile } from '../../../types/challenge';
 
 // ---------------------------------------------------------------------------
@@ -51,52 +63,58 @@ export interface InputState {
 }
 
 // ---------------------------------------------------------------------------
-// Constants (Req 9.8 — all numeric constants in src/constants/; however, these
-// are physics-layer constants used only inside WaterSimulation so they live here
-// per Req 2.5, which states utilities used by fewer than three features stay in
-// the owning feature folder.)
+// Constants — re-exported from src/constants/physics.ts (Req 9.8)
+// These aliases maintain backward-compatibility for any test/consumer that
+// imports them directly from WaterSimulation.
 // ---------------------------------------------------------------------------
 
 /**
  * Base water button force magnitude (Remote Config default `base_water_force`).
  * Requirement 22.2, 28.5.
  */
-export const BASE_WATER_FORCE = 0.003;
+export const BASE_WATER_FORCE = PHYSICS_BASE_WATER_FORCE;
 
 /**
  * Maximum total force magnitude that may be applied to any ring in one tick.
  * Safety clamp for all four layers combined.
  * Requirement 22.1 (Property 1).
  */
-export const MAX_WATER_FORCE = 0.012;
-
-/** Horizontal component scale for the button force (Req 22.2). */
-const H_FACTOR = 1.0;
-
-/** Vertical (upward) component scale for the button force (Req 22.2). */
-const V_FACTOR = 0.2;
+export const MAX_WATER_FORCE = PHYSICS_MAX_WATER_FORCE;
 
 /** Base buoyancy force per unit depth (Req 22.4). */
-export const BUOYANCY_BASE = 0.0005;
+export const BUOYANCY_BASE = PHYSICS_BUOYANCY_BASE;
+
+/**
+ * Maximum force magnitude from a single button press (at full intensity, no falloff).
+ * Used for clamping and reference; equals BASE_WATER_FORCE.
+ * Requirement 22.2.
+ */
+export const MAX_BUTTON_FORCE = PHYSICS_BASE_WATER_FORCE;
+
+/** Horizontal component scale for the button force (Req 22.2). */
+const H_FACTOR = BUTTON_H_FACTOR;
+
+/** Vertical (upward) component scale for the button force (Req 22.2). */
+const V_FACTOR = BUTTON_V_FACTOR;
 
 /**
  * Water surface Y-coordinate as a fraction of arena height.
  * Placed near the top of the arena (5 %).
  */
-const WATER_SURFACE_FRACTION = 0.05;
+const WATER_SURFACE_FRACTION = PHYSICS_WATER_SURFACE_FRACTION;
 
 /** Turbulence multiplier applied to the base water force (Req 22.5). */
-const TURBULENCE_FACTOR = 0.8;
+const TURBULENCE_FACTOR = PHYSICS_TURBULENCE_FACTOR;
 
 /** Multiplier applied to `ambientForce` for the background current. */
-const CURRENT_STRENGTH_MULTIPLIER = 1.0;
+const CURRENT_STRENGTH_MULTIPLIER = PHYSICS_CURRENT_STRENGTH_MULTIPLIER;
 
 /**
  * Depth-based drag scale factor.
  * Total linear drag = linearDamping * (1 + DRAG_DEPTH_SCALE * y/h)
  * This makes rings near the bottom feel heavier / more sluggish (Req 22.7).
  */
-const DRAG_DEPTH_SCALE = 0.5;
+const DRAG_DEPTH_SCALE = PHYSICS_DRAG_DEPTH_SCALE;
 
 // ---------------------------------------------------------------------------
 // Xoshiro128** PRNG (Req 22.5, 24.6)

@@ -1,0 +1,37 @@
+appId: com.waterringpuzzlegame
+name: Performance Baseline Measurement
+---
+# ─── Cold Start ───────────────────────────────────────────────────────────────
+# Clear all app state so each run starts from a true cold launch.
+# Budget: cold_start_ms < 3000 ms (hard limit 5000 ms)
+- clearState
+- launchApp
+# HomeScreen must be interactive within the cold-start budget.
+- assertVisible:
+    id: "home-screen"
+    timeout: 3000
+
+# ─── Challenge Load ───────────────────────────────────────────────────────────
+# Budget: challenge_load_ms < 500 ms (hard limit 1000 ms)
+- tapOn:
+    text: "Play"
+- assertVisible:
+    id: "challenge-screen"
+    timeout: 500
+
+# ─── 30-Second Gameplay / Frame Rate ─────────────────────────────────────────
+# Simulate active gameplay for ~30 seconds to stress the render loop.
+# Each pair of taps ≈ 2.5 s of play → 12 pairs ≈ 30 s total.
+# Budget: p95_frame_time_ms < 16.67 ms (60 fps floor)
+- waitForAnimationToEnd
+- repeat:
+    times: 12
+    commands:
+      - tapOn:
+          id: "btn-left"
+      - waitForAnimationToEnd:
+          timeout: 1250
+      - tapOn:
+          id: "btn-right"
+      - waitForAnimationToEnd:
+          timeout: 1250
