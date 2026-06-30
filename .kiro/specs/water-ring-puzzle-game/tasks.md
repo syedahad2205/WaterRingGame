@@ -533,12 +533,12 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - `fc.property(fc.integer({ min: 0, max: 2000 }), duration => duration < 150 ? isTap(duration) : duration >= 150)`
     - _Requirements: 16.1_
 
-- [ ] 3.2.2 Implement button intensity ramp model
+- [x] 3.2.2 Implement button intensity ramp model
   - Ramp from 0 to 1.0 over 300ms hold; maintain at 1.0 until 1500ms; decay to floor 0.3 over next 2000ms
   - Expose current intensity via `getCurrentInputState().leftIntensity` and `.rightIntensity`
   - _Requirements: 22.6_
 
-  - [ ]* 3.2.2a Write unit test for intensity ramp at t=0, t=300ms, t=1500ms, t=3500ms
+  - [x]* 3.2.2a Write unit test for intensity ramp at t=0, t=300ms, t=1500ms, t=3500ms
     - _Requirements: 22.6_
 
 
@@ -579,13 +579,13 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - **Validates: Requirements 9.1, 16.2**
     - _Requirements: Property 15_
 
-- [ ] 3.3.3 Implement developer debug overlay
+- [x] 3.3.3 Implement developer debug overlay
   - Toggle via shake gesture or dev menu
   - Display: current FPS, physics tick time (ms), active ring/peg count, challenge number, current template, assist flags, MMKV write latency
   - Enabled only in dev/debug builds; tree-shaken from production
   - _Requirements: 48.3_
 
-  - [ ]* 3.3.3a Write unit test for debug overlay data collection
+  - [x]* 3.3.3a Write unit test for debug overlay data collection
     - _Requirements: 48.3_
 
 ## Epic 3: Dependency Graph
@@ -755,7 +755,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Ring bouncing at settle velocity threshold must not false-trigger; occupied peg must reject incoming ring.
 **Testing Requirements:** Unit tests for each landing condition individually; integration test for stuck detection cycle.
 
-- [ ] 4.3.1 Implement ring landing detection with all 5 conditions
+- [x] 4.3.1 Implement ring landing detection with all 5 conditions
   - Via `Matter.Events.on(engine, 'collisionStart', handler)`
   - Conditions: center within 1.2× tipRadius, velocity < settleVelocityThreshold, angle ±15° (±8° for Precision), no bounce within 200ms, colorId matches
   - Fire `ring_settled` event on confirmed landing
@@ -765,7 +765,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 4.3.1a Write unit tests for each of the 5 landing conditions independently
     - _Requirements: 10.6, 23.4_
 
-- [ ] 4.3.2 Implement stuck detection and recovery system
+- [x] 4.3.2 Implement stuck detection and recovery system
   - Track velocity and angularVelocity per ring each tick
   - If below STUCK_THRESHOLD for 5 continuous seconds and ring not settled: apply random impulse
   - Allow up to 3 nudges; after 3 failures teleport ring to random open position
@@ -775,7 +775,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - Test: ring stuck 5s → nudge; stuck again → nudge; stuck again → teleport
     - _Requirements: 10.7_
 
-- [ ] 4.3.3 Implement NaN guard and checkpoint restoration
+- [x] 4.3.3 Implement NaN guard and checkpoint restoration
   - Before every render: check all ring positions for NaN/Infinity
   - On detection: restore from last valid MMKV checkpoint; log non-fatal Crashlytics event
   - _Requirements: 10.8_
@@ -783,13 +783,13 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 4.3.3a Write unit test for NaN detection and recovery trigger
     - _Requirements: 10.8_
 
-- [ ] 4.3.4 Implement physics state serialization and restoration
+- [x] 4.3.4 Implement physics state serialization and restoration
   - `serializeState()`: serialize all ring positions, velocities, angles, angularVelocities, settled states
   - `restoreState(state)`: restore all body positions and velocities from serialized state
   - Used by GameLoop checkpoint system and replay system
   - _Requirements: 10.1_
 
-  - [ ]* 4.3.4a Write unit test for state serialize/restore round-trip
+  - [x]* 4.3.4a Write unit test for state serialize/restore round-trip
     - Test: serialize state, modify positions, restore, assert positions match original
     - _Requirements: 10.1_
 
@@ -1142,13 +1142,13 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 6.3.3a Write unit tests for timer formula at D=0, D=50, D=100
     - _Requirements: 11.2_
 
-- [ ] 6.3.4 Implement complete `generate(N)` pipeline orchestration
+- [x] 6.3.4 Implement complete `generate(N)` pipeline orchestration
   - Run all 12 steps in order with forked PRNGs at steps 5–11
   - Return complete `ChallengeConfig`
   - Also implement `generateDaily(date)` using DailySeed
   - _Requirements: 11.1, 11.2, 11.3, 11.6_
 
-  - [ ]* 6.3.4a Write property test for challenge generation determinism
+  - [x]* 6.3.4a Write property test for challenge generation determinism
     - **Property 5: generate(N) returns byte-identical ChallengeConfig on repeated calls**
     - `fc.property(fc.integer({min:1,max:10000000}), N => deepEqual(generate(N), generate(N)))`
     - **Validates: Requirements 11, 24**
@@ -1272,7 +1272,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Resume from background mid-challenge; app kill recovery from MMKV checkpoint.
 **Testing Requirements:** Integration test for full challenge lifecycle (start → play → win).
 
-- [ ] 7.1.1 Implement challenge loading in GameScreen
+- [x] 7.1.1 Implement challenge loading in GameScreen
   - Read challenge number from navigation params or challengeSlice
   - Call `ChallengeGenerator.generate(N)` (or daily variant)
   - Initialize PhysicsWorld with generated config
@@ -1283,7 +1283,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 7.1.1a Write integration test for full challenge load pipeline (< 500ms)
     - _Requirements: 43.6_
 
-- [ ] 7.1.2 Implement session lifecycle: start, win, loss, quit flows
+- [x] 7.1.2 Implement session lifecycle: start, win, loss, quit flows
   - Challenge start: initialize all systems; write MMKV checkpoint; log `challenge_start` analytics
   - Win flow: pause physics; dispatch `win_condition_met`; show VictoryModal; compute rewards
   - Loss flow: timer expires; dispatch `timer_expired`; show ContinueModal; if declined show DefeatModal
@@ -1293,7 +1293,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 7.1.2a Write integration test for win → victory modal flow
     - _Requirements: 9.1_
 
-  - [ ]* 7.1.2b Write integration test for loss → continue modal → defeat modal flow
+  - [x]* 7.1.2b Write integration test for loss → continue modal → defeat modal flow
     - _Requirements: 20.6_
 
 
@@ -1306,7 +1306,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Continue cost must never go negative; ad not available → coin fallback only; assist must not activate on first attempt.
 **Testing Requirements:** Property tests for continue cost escalation and bonus time bounds (Properties 12, 16).
 
-- [ ] 7.2.1 Implement continue cost formula and spendCoins integration
+- [x] 7.2.1 Implement continue cost formula and spendCoins integration
   - `continueCost(D, n)`: cost escalates per design (n=1 base, increases each continue)
   - Check balance before deducting; show "insufficient coins" if balance low
   - Add bonus time via `TimerController.addBonusTime(continueBonusTime(D))`
@@ -1325,7 +1325,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - **Validates: Requirement 30**
     - _Requirements: Property 16_
 
-- [ ] 7.2.2 Implement AdaptiveAssistController
+- [x] 7.2.2 Implement AdaptiveAssistController
   - `src/features/game/adaptive/AdaptiveAssistController.ts`
   - `recordAttempt(result)`: track fail count per challenge
   - `recordQuit(progress)`: track abandonment
@@ -1338,7 +1338,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
     - Test: exactly 3 failures triggers; 2 failures does not; consecutive quits logic
     - _Requirements: 16.2_
 
-  - [ ]* 7.2.2b Write unit test for assist invisibility (no UI change, only physics parameter change)
+  - [x]* 7.2.2b Write unit test for assist invisibility (no UI change, only physics parameter change)
     - _Requirements: 16.2_
 
 ## Feature 7.3: Onboarding Challenges 1–20
@@ -1350,7 +1350,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Player who clears app data must see tutorial again; tutorial must not interfere with physics; tutorial overlays must be accessible.
 **Testing Requirements:** E2E test for full onboarding flow (challenges 1–5 as representative subset).
 
-- [ ] 7.3.1 Implement onboarding tutorial overlays for challenges 1–5
+- [x] 7.3.1 Implement onboarding tutorial overlays for challenges 1–5
   - Challenge 1: left/right button introduction with animated arrows
   - Challenge 2: introduction of hold mechanic (hold prompt after 3 taps)
   - Challenge 3: ring size introduction (large ring requires more force)
@@ -1362,13 +1362,13 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 7.3.1a Write E2E test for challenge 1 tutorial dismissal on button press
     - _Requirements: 28.4_
 
-- [ ] 7.3.2 Implement tutorial state tracking and feature unlock flow
+- [x] 7.3.2 Implement tutorial state tracking and feature unlock flow
   - `onboardingSlice`: track per-challenge tutorial completion flags
   - Feature gates: timer visible from challenge 3; continue visible from challenge 6; daily challenge unlocked at challenge 15; leaderboard unlocked at challenge 20
   - Account prompt: shown at challenge 10 (dismissible) and challenge 25 (dismissible, no earlier)
   - _Requirements: 28.4_
 
-  - [ ]* 7.3.2a Write unit tests for feature unlock conditions
+  - [x]* 7.3.2a Write unit tests for feature unlock conditions
     - Test: timer not shown before challenge 3; leaderboard not shown before challenge 20
     - _Requirements: 28.4_
 
