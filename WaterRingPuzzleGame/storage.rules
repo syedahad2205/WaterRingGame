@@ -1,0 +1,13 @@
+// PLACEHOLDER — Firebase Storage security rules
+// These rules will be properly implemented as part of the replay storage feature.
+// DO NOT deploy these permissive rules to production.
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // PLACEHOLDER: deny all by default until proper rules are implemented
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

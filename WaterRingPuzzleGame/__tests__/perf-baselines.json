@@ -1,0 +1,33 @@
+{
+  "coldStartMs": {
+    "target": 3000,
+    "hardLimit": 5000,
+    "referenceDevice": "iPhone 11"
+  },
+  "coldStartAndroidMs": {
+    "target": 3500,
+    "hardLimit": 5000,
+    "referenceDevice": "Pixel 5"
+  },
+  "challengeLoadMs": {
+    "target": 500,
+    "hardLimit": 1000
+  },
+  "challengeGenerationMs": {
+    "target": 80,
+    "hardLimit": 150
+  },
+  "victoryTransitionMs": {
+    "target": 300,
+    "hardLimit": 500
+  },
+  "p95FrameTimeMs": {
+    "target": 12,
+    "hardLimit": 16.67,
+    "referenceDevice": "iPhone 11"
+  },
+  "maxHeapMB": {
+    "target": 150,
+    "hardLimit": 200
+  }
+}

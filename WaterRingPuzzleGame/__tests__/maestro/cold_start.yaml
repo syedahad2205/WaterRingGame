@@ -1,0 +1,11 @@
+appId: com.waterringpuzzlegame
+name: Cold Start Measurement
+---
+- clearState
+- launchApp
+- assertVisible:
+    text: ".*"
+    timeout: 5000
+- tapOn:
+    text: "Play"
+    optional: true

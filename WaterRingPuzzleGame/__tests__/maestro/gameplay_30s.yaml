@@ -1,0 +1,18 @@
+appId: com.waterringpuzzlegame
+name: 30-Second Gameplay Session
+---
+- launchApp
+- tapOn:
+    text: "Play"
+- waitForAnimationToEnd
+- repeat:
+    times: 6
+    commands:
+      - tapOn:
+          id: "btn-left"
+      - waitForAnimationToEnd:
+          timeout: 500
+      - tapOn:
+          id: "btn-right"
+      - waitForAnimationToEnd:
+          timeout: 500

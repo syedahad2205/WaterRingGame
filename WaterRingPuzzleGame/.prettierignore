@@ -1,0 +1,16 @@
+node_modules/
+android/
+ios/
+coverage/
+build/
+dist/
+*.generated.*
+*.lock
+package-lock.json
+yarn.lock
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.webp

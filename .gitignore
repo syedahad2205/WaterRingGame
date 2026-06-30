@@ -1,0 +1,99 @@
+# ─── Node ────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.yarn-integrity
+
+# ─── React Native ────────────────────────────────────────────────────────────
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# Metro bundler
+.metro-health-check*
+
+# ─── iOS ─────────────────────────────────────────────────────────────────────
+WaterRingPuzzleGame/ios/Pods/
+WaterRingPuzzleGame/ios/build/
+WaterRingPuzzleGame/ios/*.xcworkspace/xcuserdata/
+WaterRingPuzzleGame/ios/DerivedData/
+WaterRingPuzzleGame/ios/*.ipa
+WaterRingPuzzleGame/ios/*.dSYM.zip
+WaterRingPuzzleGame/ios/*.dSYM
+
+# ─── Android ─────────────────────────────────────────────────────────────────
+WaterRingPuzzleGame/android/app/build/
+WaterRingPuzzleGame/android/build/
+WaterRingPuzzleGame/android/.gradle/
+WaterRingPuzzleGame/android/local.properties
+WaterRingPuzzleGame/android/app/*.apk
+WaterRingPuzzleGame/android/app/*.aab
+WaterRingPuzzleGame/android/keystores/
+
+# ─── Firebase — NEVER commit real credential files ──────────────────────────
+# Placeholder files ARE committed (they contain no real credentials)
+# Real files should be added after project setup — add them to this list:
+# google-services.json        # real Android Firebase config
+# GoogleService-Info.plist    # real iOS Firebase config
+# .firebaserc                 # already committed (contains only project IDs)
+
+# Firebase emulator data
+WaterRingPuzzleGame/.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+
+# ─── TypeScript / Build output ───────────────────────────────────────────────
+WaterRingPuzzleGame/lib/
+WaterRingPuzzleGame/dist/
+WaterRingPuzzleGame/coverage/
+*.tsbuildinfo
+
+# Cloud Functions build output
+functions/lib/
+functions/node_modules/
+
+# ─── Testing ─────────────────────────────────────────────────────────────────
+WaterRingPuzzleGame/coverage/
+
+# ─── Environment / Secrets ──────────────────────────────────────────────────
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+*.secret
+*.pem
+*.key
+
+# Fastlane secrets
+WaterRingPuzzleGame/fastlane/.env
+WaterRingPuzzleGame/fastlane/report.xml
+
+# ─── macOS ───────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+# ─── IDE / Editor ────────────────────────────────────────────────────────────
+.idea/
+*.swp
+*.swo
+*~
+
+# VS Code — keep .vscode/settings.json but not user-specific files
+.vscode/*.log
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.log
+*.tmp
+.cache/
+tmp/

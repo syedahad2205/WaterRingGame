@@ -1,0 +1,114 @@
+# CI Workflow — Lint, Unit Tests, and Property-Based Tests
+#
+# Runs on every push to main and on all pull requests.
+# Three independent jobs: lint, test-unit, test-property.
+# node_modules is cached by package-lock.json hash.
+# Coverage report from test-unit is uploaded as an artifact.
+#
+# Requirements: 48.2, 53.1
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # ── Job 1: Lint ─────────────────────────────────────────────────────────────
+  lint:
+    name: ESLint (zero warnings)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: WaterRingPuzzleGame/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('WaterRingPuzzleGame/package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
+      - name: Install dependencies
+        working-directory: WaterRingPuzzleGame
+        run: npm ci
+
+      - name: Run ESLint with zero warnings
+        working-directory: WaterRingPuzzleGame
+        run: npm run lint -- --max-warnings 0
+
+  # ── Job 2: Unit Tests ────────────────────────────────────────────────────────
+  test-unit:
+    name: Unit Tests + Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: WaterRingPuzzleGame/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('WaterRingPuzzleGame/package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
+      - name: Install dependencies
+        working-directory: WaterRingPuzzleGame
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        working-directory: WaterRingPuzzleGame
+        run: npx jest --testPathPattern=unit --coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: WaterRingPuzzleGame/coverage/
+          retention-days: 30
+
+  # ── Job 3: Property-Based Tests ──────────────────────────────────────────────
+  test-property:
+    name: Property-Based Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: WaterRingPuzzleGame/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('WaterRingPuzzleGame/package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
+      - name: Install dependencies
+        working-directory: WaterRingPuzzleGame
+        run: npm ci
+
+      - name: Run property-based tests
+        working-directory: WaterRingPuzzleGame
+        run: npx jest --testPathPattern=property

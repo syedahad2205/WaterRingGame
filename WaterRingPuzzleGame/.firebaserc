@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "REPLACE_WITH_FIREBASE_PROJECT_ID",
+    "dev": "REPLACE_WITH_DEV_PROJECT_ID",
+    "prod": "REPLACE_WITH_PROD_PROJECT_ID"
+  },
+  "_comment": "Replace the placeholder project IDs above with your actual Firebase project IDs. See FIREBASE_SETUP.md for instructions."
+}

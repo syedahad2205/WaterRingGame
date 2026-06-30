@@ -1,0 +1,7 @@
+appId: com.waterringpuzzlegame
+name: Victory Screen Transition
+---
+- launchApp
+- tapOn:
+    text: "Play"
+- waitForAnimationToEnd

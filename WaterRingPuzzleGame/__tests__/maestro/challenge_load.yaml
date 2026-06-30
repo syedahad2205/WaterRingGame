@@ -1,0 +1,9 @@
+appId: com.waterringpuzzlegame
+name: Challenge Load Time
+---
+- launchApp
+- tapOn:
+    text: "Play"
+- assertVisible:
+    id: "challenge-screen"
+    timeout: 2000
