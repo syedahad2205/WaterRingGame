@@ -838,7 +838,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Shader compile failure on old GPUs; theme change must update uniforms without recompilation.
 **Testing Requirements:** Render performance benchmark; shader compilation test on both platforms.
 
-- [ ] 5.1.1 Implement four summed sine wave water surface animation
+- [x] 5.1.1 Implement four summed sine wave water surface animation
   - `src/features/game/rendering/WaterRenderer.tsx`
   - Sum four waves: base swell (4px, 0.3Hz, 0.4 rad/s), mid ripple (2px, 0.8Hz, 0.9 rad/s), high ripple (1px, 1.6Hz, 1.8 rad/s), micro chop (0.5px, 3.2Hz, 3.5 rad/s)
   - Animate with `useFrameCallback` in Reanimated; write surface Y positions to shared values
@@ -847,7 +847,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 5.1.1a Write unit test for sine wave surface Y computation at t=0, t=1s, t=5s
     - _Requirements: 38.1_
 
-- [ ] 5.1.2 Implement Skia water shader (GLSL)
+- [x] 5.1.2 Implement Skia water shader (GLSL)
   - `src/assets/shaders/water.glsl`: vertical gradient darkening, caustic shimmer, specular highlight, chromatic aberration
   - No branching (`if` statements) in shader code
   - Uniforms: brightness, causticSpeed, tint, time — driven by active theme
@@ -860,7 +860,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 5.1.2b Write unit test for shader fallback on compile error
     - _Requirements: 41.5_
 
-- [ ] 5.1.3 Implement dirty-flag optimization for water surface
+- [x] 5.1.3 Implement dirty-flag optimization for water surface
   - Track whether wave parameters changed since last render
   - If button not pressed and no rings moving: surface wave still animates (always dirty)
   - If settled state: only water body layer redraws; all other layers skip
@@ -879,7 +879,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Displacement updates visual only, not physics; wakes capped at 3 rings when 6+ rings active.
 **Testing Requirements:** Visual regression test; unit tests for Gaussian bell formula.
 
-- [ ] 5.2.1 Implement Layer 2: Water Displacement visualization
+- [x] 5.2.1 Implement Layer 2: Water Displacement visualization
   - `DisplacementBulge(x, side, intensity, t) = intensity × Gaussian(x, μ=sourceX, σ=ScreenWidth×0.2) × DecayEnvelope(t, τ=300ms)`
   - Render as Skia path over water surface; visual only, no physics effect
   - Peak displacement: 12px at wall, 0 at screen center at max intensity
@@ -888,7 +888,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 5.2.1a Write unit test for displacement Gaussian formula at x=0, x=ScreenWidth/2, x=ScreenWidth
     - _Requirements: 38.3_
 
-- [ ] 5.2.2 Implement Layer 3: Ring Wake System
+- [x] 5.2.2 Implement Layer 3: Ring Wake System
   - `src/features/game/rendering/WaterRenderer.tsx` (wake logic section)
   - Each ring maintains circular buffer: last 300ms of positions at 30 samples/second
   - Wake rendered as V-shaped Skia path fill; Kelvin angle 19.5°; max length 80px; exponential fade over 600ms
@@ -910,7 +910,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Rapid button presses must not spawn more than 12 bubbles at once; ambient generation rate correct.
 **Testing Requirements:** Unit tests for bubble lifecycle; performance test: 40 bubbles at 60fps.
 
-- [ ] 5.3.1 Implement BubbleSystem with object pool and generation logic
+- [x] 5.3.1 Implement BubbleSystem with object pool and generation logic
   - `src/features/game/rendering/BubbleSystem.ts`
   - Pool of max 40 `Bubble` objects; circular buffer management
   - Generation triggers: button press (5–12 bubbles), ring collision (2–4), ring landing (6–10), ambient (1 every 2–4s)
@@ -920,7 +920,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 5.3.1a Write unit test for bubble pool max-40 cap with overflow culling
     - _Requirements: 43.4_
 
-- [ ] 5.3.2 Implement bubble rise physics and pop trigger
+- [x] 5.3.2 Implement bubble rise physics and pop trigger
   - Rise: `y(t) = y(0) - RISE_SPEED × t` (40px/s)
   - Wobble: `x(t) = x(0) + 4px × sin(1.5Hz × t + wobblePhase)`
   - Opacity decay as bubble approaches surface
@@ -940,7 +940,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Edge Cases:** Multiple simultaneous ripple triggers on fast input; ring texture atlas loaded only during GameScreen.
 **Testing Requirements:** Unit tests for ripple expansion formula; visual regression test.
 
-- [ ] 5.4.1 Implement Layer 5: RippleSystem
+- [x] 5.4.1 Implement Layer 5: RippleSystem
   - `src/features/game/rendering/RippleSystem.ts`
   - Pool: max 20 ripples; oldest culled on overflow
   - 4 ripple types: bubble pop (0.3 opacity, 600ms, 80px/s), ring surface break (0.5, 800ms, 100px/s), button press (0.4, 1000ms, 120px/s), rain drop (0.25, 500ms, 60px/s)
@@ -950,7 +950,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 5.4.1a Write unit test for ripple radius and opacity formula per type at t=0, midlife, end
     - _Requirements: 43.4_
 
-- [ ] 5.4.2 Implement RingRenderer with highlight and drop shadow
+- [x] 5.4.2 Implement RingRenderer with highlight and drop shadow
   - `src/features/game/rendering/RingRenderer.tsx`
   - Ring body: torus shape in active skin color/texture (from ring atlas)
   - Inner highlight: 70% opacity white arc, 30° at upper-left, 3px stroke
@@ -962,7 +962,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
   - [ ]* 5.4.2a Write visual regression test for ring rendering (snapshot)
     - _Requirements: 36.2_
 
-- [ ] 5.4.3 Implement PegRenderer with glow and accepted-ring indicator
+- [x] 5.4.3 Implement PegRenderer with glow and accepted-ring indicator
   - `src/features/game/rendering/PegRenderer.tsx`
   - Peg body: conical shape in peg color; glow color matches required ring colorId
   - When ring settled: glow pulses at 1.5Hz between opacity 0.3–0.6
@@ -980,7 +980,7 @@ All tasks are organized by Epic below. See the `## Notes` section at the end for
 **Acceptance Criteria:** High-end: all 5 layers; Mid-range: layers 1–4; Low-end: layers 1–2 only; manual override persists; Low Power Mode downgrades one tier.
 **Testing Requirements:** Integration test for tier detection → layer count correlation.
 
-- [ ] 5.5.1 Implement device tier layer management in WaterRenderer
+- [x] 5.5.1 Implement device tier layer management in WaterRenderer
   - Read `device_performance_tier` from MMKV; apply settings override if present
   - High-end: all layers active; Mid: disable layers 4–5; Low: disable layers 3–5
   - Listen for `RNDeviceInfo` Low Power Mode / Battery Saver events; downgrade one tier
