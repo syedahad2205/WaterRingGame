@@ -2,13 +2,12 @@
  * SFXManager — discrete sound effect playback manager
  *
  * Manages all 17 gameplay SFX events with per-event volume, pitch, and
- * stereo panning support. All SFX events are documented no-ops until audio
- * asset files are available (react-native-sound is installed but not yet
- * loaded with real files).
+ * stereo panning support. Playback is powered by react-native-sound with
+ * optional preloading for low-latency replay during gameplay.
  *
- * Asset paths:
- *   Android : assets/sounds/sfx/{eventName}.ogg
- *   iOS     : assets/sounds/sfx/{eventName}.m4a
+ * Asset paths (resolved via SOUND_MAP from audioMap.ts):
+ *   Android : res/raw/{category}_{name} (flat, no extension)
+ *   iOS     : {category}/{name}.mp3 (from app bundle)
  *
  * Spatial audio design:
  *   Ring-ring collision SFX panning is driven by the ring's x-position
@@ -25,6 +24,12 @@
  * Requirements: 14.1 (playSFX interface), 8.1 (audio feature folder)
  */
 
+import Sound from 'react-native-sound';
+import { SOUND_MAP, type SoundName } from '../../constants/audioMap';
+
+// Enable playback in silence mode on iOS
+Sound.setCategory('Playback');
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -32,24 +37,10 @@
 /**
  * All 17 supported SFX event names.
  *
- * Mapped to files:
- *   button_tap           → sfx/button_tap.{ogg,m4a}
- *   button_hold_start    → sfx/button_hold_start.{ogg,m4a}
- *   button_hold_peak     → sfx/button_hold_peak.{ogg,m4a}
- *   rapid_tap            → sfx/rapid_tap.{ogg,m4a}
- *   ring_collision       → sfx/ring_collision.{ogg,m4a}        (spatial: panning by x-pos)
- *   ring_wall_collision  → sfx/ring_wall_collision.{ogg,m4a}   (spatial: panning by x-pos)
- *   ring_near_peg        → sfx/ring_near_peg.{ogg,m4a}
- *   ring_landed_peg      → sfx/ring_landed_peg.{ogg,m4a}
- *   perfect_placement    → sfx/perfect_placement.{ogg,m4a}
- *   timer_warning_amber  → sfx/timer_warning_amber.{ogg,m4a}
- *   timer_warning_red    → sfx/timer_warning_red.{ogg,m4a}
- *   victory              → sfx/victory.{ogg,m4a}
- *   defeat               → sfx/defeat.{ogg,m4a}
- *   achievement_unlock   → sfx/achievement_unlock.{ogg,m4a}
- *   coin_earn            → sfx/coin_earn.{ogg,m4a}
- *   navigation_tap       → sfx/navigation_tap.{ogg,m4a}
- *   purchase_confirm     → sfx/purchase_confirm.{ogg,m4a}
+ * Each event maps to a SoundName in SOUND_MAP. The file path is resolved
+ * from the SOUND_MAP entry with platform-specific handling:
+ *   iOS     : file path from SOUND_MAP (e.g. 'ui/button_press.mp3')
+ *   Android : flattened underscore name without extension (e.g. 'ui_button_press')
  */
 export type SFXEventName =
   | 'button_tap'
@@ -99,27 +90,71 @@ export interface SFXOptions {
 }
 
 // ---------------------------------------------------------------------------
+// SFXEventName → SoundName mapping
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps each SFXEventName to the corresponding key in SOUND_MAP.
+ * This bridges the legacy 17-event SFX API with the unified SOUND_MAP asset catalogue.
+ */
+const SFX_EVENT_TO_SOUND_NAME: Record<SFXEventName, SoundName> = {
+  button_tap:           'ui_button_press',
+  button_hold_start:    'button_hold_start',
+  button_hold_peak:     'button_hold_peak',
+  rapid_tap:            'rapid_tap',
+  ring_collision:       'ring_collision',
+  ring_wall_collision:  'ring_wall_collision',
+  ring_near_peg:        'ring_near_peg',
+  ring_landed_peg:      'ring_land_peg',
+  perfect_placement:    'ring_perfect_land',
+  timer_warning_amber:  'timer_warning',
+  timer_warning_red:    'timer_critical',
+  victory:              'victory_fanfare',
+  defeat:               'defeat_sound',
+  achievement_unlock:   'achievement_unlock',
+  coin_earn:            'coin_collect',
+  navigation_tap:       'ui_tab_switch',
+  purchase_confirm:     'purchase_success',
+};
+
+// ---------------------------------------------------------------------------
 // Internal asset path building
 // ---------------------------------------------------------------------------
 
 /**
+ * Detect whether we are running on Android. Guarded to avoid crashing in
+ * test environments that do not have react-native fully mocked.
+ */
+let _isAndroid = false;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+  const { Platform } = require('react-native') as { Platform: { OS: string } };
+  _isAndroid = Platform.OS === 'android';
+} catch {
+  // Not in a React Native environment — default to iOS paths
+}
+
+/**
  * Returns the platform-appropriate asset file path for a given SFX event.
- * The Platform import is guarded to avoid crashing in test environments
- * that do not have react-native fully mocked.
+ *
+ * Looks up the event in SOUND_MAP via SFX_EVENT_TO_SOUND_NAME, then:
+ *   iOS     : returns the file path as-is (e.g. 'ui/button_press.mp3')
+ *             react-native-sound resolves this from the app bundle.
+ *   Android : flattens path separators to underscores and strips the extension
+ *             (e.g. 'ui_button_press') because Android res/raw resources are
+ *             referenced by name only, without extension or subdirectories.
  */
 function getSFXFilePath(event: SFXEventName): string {
-  let ext = 'm4a'; // iOS default
-  try {
-    // Dynamic require to prevent crash when react-native is not available
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-    const { Platform } = require('react-native') as { Platform: { OS: string } };
-    if (Platform.OS === 'android') {
-      ext = 'ogg';
-    }
-  } catch {
-    // Not in a React Native environment (e.g., pure Node.js test) — use m4a default
+  const soundName = SFX_EVENT_TO_SOUND_NAME[event];
+  const asset = SOUND_MAP[soundName];
+  const filePath = asset.file; // e.g. 'ui/button_press.mp3'
+
+  if (_isAndroid) {
+    // Flatten: 'ui/button_press.mp3' → 'ui_button_press'
+    return filePath.replace(/\.\w+$/, '').replace(/\//g, '_');
   }
-  return `assets/sounds/sfx/${event}.${ext}`;
+  // iOS: return as-is; react-native-sound resolves from MAIN_BUNDLE
+  return filePath;
 }
 
 // ---------------------------------------------------------------------------
@@ -174,6 +209,12 @@ export class SFXManager {
    */
   private _preloadedEvents: Set<SFXEventName> = new Set();
 
+  /**
+   * Cache of preloaded Sound instances keyed by event name.
+   * Preloaded sounds are kept in memory for low-latency replay.
+   */
+  private _soundCache: Map<SFXEventName, Sound> = new Map();
+
   // ---------------------------------------------------------------------------
   // Public API
   // ---------------------------------------------------------------------------
@@ -191,19 +232,8 @@ export class SFXManager {
    *   For ring_collision, pass `options.pitch` computed with PRNG sub-seed as:
    *     pitch = 1.0 + (prng.next() * 0.16 - 0.08)   // ±8% variation
    *
-   * All SFX events are currently no-ops pending audio asset availability.
-   * When assets are added, replace the TODO section with a react-native-sound
-   * play() call:
-   * ```typescript
-   * const sound = new Sound(getSFXFilePath(event), Sound.MAIN_BUNDLE, (err) => {
-   *   if (!err) {
-   *     sound.setVolume(effectiveVolume);
-   *     sound.setPan(panning);
-   *     sound.setSpeed(pitch);
-   *     sound.play(() => sound.release());
-   *   }
-   * });
-   * ```
+   * If the sound has been preloaded, it is replayed from cache (low latency).
+   * Otherwise, the sound is loaded on-demand and released after playback.
    *
    * Requirements: 14.1
    */
@@ -223,24 +253,42 @@ export class SFXManager {
 
       const pitch = this._clampPitch(options?.pitch ?? 1.0);
       const panning = this._clampPanning(options?.panning ?? 0.0);
-      const filePath = getSFXFilePath(event);
 
-      // TODO: Load and play via react-native-sound when assets are available:
-      //   const sound = new Sound(filePath, Sound.MAIN_BUNDLE, (err) => {
-      //     if (!err) {
-      //       sound.setVolume(effectiveVolume);
-      //       sound.setPan(panning);
-      //       sound.setSpeed(pitch);
-      //       sound.play(() => sound.release());
-      //     }
-      //   });
-      void filePath;
-      void pitch;
-      void panning;
-      void effectiveVolume;
+      // If the sound is preloaded, clone-play from the cache for low latency.
+      // Otherwise, load on-demand (slightly higher first-play latency).
+      const cached = this._soundCache.get(event);
+      if (cached) {
+        // Reset to beginning in case the cached sound was previously played
+        cached.setCurrentTime(0);
+        cached.setVolume(effectiveVolume);
+        cached.setPan(panning);
+        cached.setSpeed(pitch);
+        cached.play((success) => {
+          if (!success) {
+            if (__DEV__) console.warn(`[SFXManager] cached playback failed for ${event}`);
+          }
+        });
+      } else {
+        const filePath = getSFXFilePath(event);
+        const sound = new Sound(filePath, Sound.MAIN_BUNDLE, (err) => {
+          if (err) {
+            if (__DEV__) console.warn(`[SFXManager] failed to load ${filePath}:`, err);
+            return;
+          }
+          sound.setVolume(effectiveVolume);
+          sound.setPan(panning);
+          sound.setSpeed(pitch);
+          sound.play((success) => {
+            if (!success) {
+              if (__DEV__) console.warn(`[SFXManager] playback failed for ${event}`);
+            }
+            sound.release();
+          });
+        });
+      }
     } catch (err) {
       // Graceful degradation — SFX failure must never crash the game
-      console.warn('[SFXManager] play failed (non-fatal):', err);
+      if (__DEV__) console.warn('[SFXManager] play failed (non-fatal):', err);
     }
   }
 
@@ -248,30 +296,36 @@ export class SFXManager {
    * Preloads the sound files for the given event list into memory.
    * Call this before a challenge starts to avoid first-play latency.
    *
-   * TODO: When react-native-sound is wired, load each file into memory:
-   * ```typescript
-   * for (const event of events) {
-   *   if (!this._preloadedEvents.has(event)) {
-   *     const sound = new Sound(getSFXFilePath(event), Sound.MAIN_BUNDLE, (err) => {
-   *       if (!err) { this._soundCache.set(event, sound); }
-   *     });
-   *     this._preloadedEvents.add(event);
-   *   }
-   * }
-   * ```
+   * Loads each file into memory via react-native-sound. Resolves when all
+   * files have been loaded (or individually failed with a warning).
    *
    * Requirements: 14.1
    */
   async preload(events: SFXEventName[]): Promise<void> {
     try {
+      const loadPromises: Promise<void>[] = [];
       for (const event of events) {
         if (!this._preloadedEvents.has(event)) {
-          // TODO: preload audio file via react-native-sound when assets available
           this._preloadedEvents.add(event);
+          const filePath = getSFXFilePath(event);
+          loadPromises.push(
+            new Promise<void>((resolve) => {
+              const sound = new Sound(filePath, Sound.MAIN_BUNDLE, (err) => {
+                if (err) {
+                  if (__DEV__) console.warn(`[SFXManager] preload failed for ${filePath}:`, err);
+                  this._preloadedEvents.delete(event);
+                } else {
+                  this._soundCache.set(event, sound);
+                }
+                resolve(); // resolve even on error — preload failures are non-fatal
+              });
+            }),
+          );
         }
       }
+      await Promise.all(loadPromises);
     } catch (err) {
-      console.warn('[SFXManager] preload failed (non-fatal):', err);
+      if (__DEV__) console.warn('[SFXManager] preload failed (non-fatal):', err);
     }
   }
 
@@ -279,22 +333,24 @@ export class SFXManager {
    * Releases all preloaded sound objects from memory.
    * Call this when leaving a challenge to free audio resources.
    *
-   * TODO: When react-native-sound is wired:
-   * ```typescript
-   * for (const sound of this._soundCache.values()) {
-   *   sound.release();
-   * }
-   * this._soundCache.clear();
-   * ```
+   * Stops and releases all cached react-native-sound instances.
    *
    * Requirements: 14.1
    */
   unloadAll(): void {
     try {
-      // TODO: release all cached react-native-sound objects when linked
+      for (const sound of this._soundCache.values()) {
+        try {
+          sound.stop();
+          sound.release();
+        } catch {
+          // Individual release failure is non-fatal
+        }
+      }
+      this._soundCache.clear();
       this._preloadedEvents.clear();
     } catch (err) {
-      console.warn('[SFXManager] unloadAll failed (non-fatal):', err);
+      if (__DEV__) console.warn('[SFXManager] unloadAll failed (non-fatal):', err);
     }
   }
 

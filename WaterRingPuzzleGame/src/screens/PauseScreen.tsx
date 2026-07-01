@@ -16,10 +16,8 @@
  * Task: 8.3.1
  */
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Alert,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -31,6 +29,12 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { audioEngine } from '../features/audio/AudioEngine';
+import { GameLoop } from '../features/game/core/GameLoop';
+import { DS } from '@/constants/designSystem';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { Icon } from '@/components/icons/GameIcons';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,39 +48,6 @@ interface PauseScreenProps {
 }
 
 // ---------------------------------------------------------------------------
-// Action button component
-// ---------------------------------------------------------------------------
-
-interface ActionButtonProps {
-  label: string;
-  icon: string;
-  onPress: () => void;
-  variant?: 'default' | 'destructive';
-}
-
-function ActionButton({ label, icon, onPress, variant = 'default' }: ActionButtonProps): React.JSX.Element {
-  const isDestructive = variant === 'destructive';
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }: { pressed: boolean }) => [
-        styles.actionButton,
-        isDestructive && styles.actionButtonDestructive,
-        pressed ? styles.actionButtonPressed : undefined,
-      ]}
-      accessible={true}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-    >
-      <Text style={styles.actionButtonIcon} accessible={false}>{icon}</Text>
-      <Text style={[styles.actionButtonLabel, isDestructive && styles.actionButtonLabelDestructive]}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // PauseScreen
 // ---------------------------------------------------------------------------
 
@@ -86,8 +57,8 @@ function ActionButton({ label, icon, onPress, variant = 'default' }: ActionButto
  * Requirements: 34.1
  * Task: 8.3.1
  */
-// eslint-disable-next-line max-lines-per-function
 export default function PauseScreen({ navigation }: PauseScreenProps): React.JSX.Element {
+  const [confirmDialog, setConfirmDialog] = useState<{type: 'reset' | 'quit'} | null>(null);
   const panelOpacity = useSharedValue(0);
   const panelScale = useSharedValue(0.92);
 
@@ -113,61 +84,109 @@ export default function PauseScreen({ navigation }: PauseScreenProps): React.JSX
   }, [navigation]);
 
   const handleRestart = useCallback((): void => {
-    Alert.alert(
-      'Restart Challenge?',
-      'Your current progress will be lost.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Restart',
-          style: 'destructive',
-          onPress: (): void => {
-            navigation?.goBack();
-            navigation?.navigate('Game');
-          },
-        },
-      ],
-    );
-  }, [navigation]);
+    setConfirmDialog({ type: 'reset' });
+  }, []);
 
   const handleSettings = useCallback((): void => {
     navigation?.navigate('Settings');
   }, [navigation]);
 
   const handleQuitToHome = useCallback((): void => {
-    Alert.alert(
-      'Quit to Home?',
-      'Your progress in this challenge will be lost.',
-      [
-        { text: 'Keep Playing', style: 'cancel' },
-        {
-          text: 'Quit',
-          style: 'destructive',
-          onPress: (): void => {
-            navigation?.navigate('MainTabs');
-          },
-        },
-      ],
-    );
-  }, [navigation]);
+    setConfirmDialog({ type: 'quit' });
+  }, []);
 
   return (
     <View style={styles.backdrop}>
-      <Animated.View style={[styles.panel, animatedPanelStyle]}>
-        {/* Frosted surface — replace with <BlurView> once @react-native-community/blur is linked */}
-        <View style={styles.blurSurface} />
+      <Animated.View style={[styles.panelWrapper, animatedPanelStyle]}>
+        <GlassCard
+          variant="frosted"
+          borderRadius={DS.radius.dialog}
+          noAnimation
+          style={styles.card}
+        >
+          <View style={styles.panelContent}>
+            <Icon name="pause" size={48} color={DS.colors.secondary} />
 
-        <View style={styles.panelContent}>
-          <Text style={styles.title} accessibilityRole="header">Paused</Text>
-          <View style={styles.divider} />
-          <View style={styles.buttonList}>
-            <ActionButton label="Resume" icon="▶" onPress={handleResume} />
-            <ActionButton label="Restart" icon="↺" onPress={handleRestart} />
-            <ActionButton label="Settings" icon="⚙" onPress={handleSettings} />
-            <ActionButton label="Quit to Home" icon="✕" onPress={handleQuitToHome} variant="destructive" />
+            <Text
+              style={styles.title}
+              accessibilityRole="header"
+              accessibilityLabel="Paused"
+            >
+              PAUSED
+            </Text>
+
+            <View style={styles.divider} />
+
+            <View style={styles.buttonList}>
+              <GlassButton
+                label="Resume"
+                variant="primary"
+                iconLeft="play"
+                size="lg"
+                onPress={handleResume}
+                style={styles.fullWidth}
+              />
+              <GlassButton
+                label="Restart"
+                variant="secondary"
+                iconLeft="restart"
+                size="md"
+                onPress={handleRestart}
+                style={styles.fullWidth}
+              />
+              <GlassButton
+                label="Settings"
+                variant="ghost"
+                iconLeft="settings"
+                size="md"
+                onPress={handleSettings}
+                style={styles.fullWidth}
+              />
+              <GlassButton
+                label="Quit to Home"
+                variant="danger"
+                iconLeft="close"
+                size="md"
+                onPress={handleQuitToHome}
+                style={styles.fullWidth}
+              />
+            </View>
           </View>
-        </View>
+        </GlassCard>
       </Animated.View>
+
+      <ConfirmDialog
+        visible={confirmDialog?.type === 'reset'}
+        title="Restart Challenge?"
+        message="Your current progress will be lost."
+        confirmLabel="Restart"
+        cancelLabel="Cancel"
+        confirmVariant="destructive"
+        onConfirm={() => {
+          setConfirmDialog(null);
+          GameLoop.stop();
+          audioEngine.setMusicVolume(1.0);
+          navigation?.goBack();
+          navigation?.navigate('Game');
+        }}
+        onCancel={() => setConfirmDialog(null)}
+      />
+
+      <ConfirmDialog
+        visible={confirmDialog?.type === 'quit'}
+        title="Quit to Home?"
+        message="Your progress in this challenge will be lost."
+        confirmLabel="Quit"
+        cancelLabel="Keep Playing"
+        confirmVariant="destructive"
+        onConfirm={() => {
+          setConfirmDialog(null);
+          GameLoop.stop();
+          audioEngine.setMusicVolume(1.0);
+          navigation?.navigate('MainTabs');
+        }}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </View>
   );
 }
@@ -179,71 +198,43 @@ export default function PauseScreen({ navigation }: PauseScreenProps): React.JSX
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(5, 15, 30, 0.72)',
+    backgroundColor: 'rgba(10,14,26,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: DS.zIndex.modal,
   },
-  panel: {
+  panelWrapper: {
     width: 300,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(79,195,247,0.22)',
   },
-  blurSurface: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 28, 55, 0.88)',
+  card: {
+    width: '100%',
   },
   panelContent: {
-    paddingHorizontal: 24,
-    paddingVertical: 28,
+    paddingHorizontal: DS.spacing.xxl,
+    paddingVertical: DS.spacing.xxxl,
+    alignItems: 'center',
   },
   title: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '700',
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.title1,
+    fontWeight: DS.typography.weight.heavy,
     textAlign: 'center',
-    letterSpacing: 1,
-    marginBottom: 16,
+    letterSpacing: DS.typography.letterSpacing.title1,
+    textTransform: 'uppercase',
+    marginTop: DS.spacing.md,
+    marginBottom: DS.spacing.lg,
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(79,195,247,0.2)',
-    marginBottom: 20,
+    width: '100%',
+    backgroundColor: DS.colors.glass.border,
+    marginBottom: DS.spacing.xl,
   },
   buttonList: {
-    gap: 12,
+    width: '100%',
+    gap: DS.spacing.md,
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(79,195,247,0.12)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(79,195,247,0.2)',
-    gap: 12,
-  },
-  actionButtonDestructive: {
-    backgroundColor: 'rgba(239,83,80,0.12)',
-    borderColor: 'rgba(239,83,80,0.25)',
-  },
-  actionButtonPressed: {
-    opacity: 0.75,
-  },
-  actionButtonIcon: {
-    fontSize: 18,
-    color: '#fff',
-    width: 24,
-    textAlign: 'center',
-  },
-  actionButtonLabel: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  actionButtonLabelDestructive: {
-    color: '#EF5350',
+  fullWidth: {
+    width: '100%',
   },
 });

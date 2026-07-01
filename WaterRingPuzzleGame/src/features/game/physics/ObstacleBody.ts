@@ -16,7 +16,7 @@ import { ArenaLayout, ObstacleConfig } from '../../../types/challenge';
 // ---------------------------------------------------------------------------
 
 /** Collision filter category for arena walls. */
-export const CATEGORY_WALL = 0x0004;
+export const CATEGORY_WALL = 0x0008;
 
 /** Collision filter mask for walls — collide with everything by default. */
 export const MASK_WALL = 0xffff;

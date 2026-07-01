@@ -16,6 +16,8 @@
  * Requirements: 7.1 (TimerController.ts in core/), 9.1, 16.2
  */
 
+import { formatSeconds } from '../../../utils/time';
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -55,23 +57,15 @@ export function getTimerPhase(
   secondsRemaining: number,
   totalSeconds: number,
 ): TimerPhase {
-  if (secondsRemaining <= 0) return 'expired';
+  if (secondsRemaining <= 0 || totalSeconds <= 0) return 'expired';
   const fraction = secondsRemaining / totalSeconds;
   if (fraction <= CRITICAL_THRESHOLD_FRACTION) return 'critical';
   if (fraction <= AMBER_THRESHOLD_FRACTION) return 'amber';
   return 'normal';
 }
 
-/**
- * Format seconds as "M:SS" string.
- * E.g. 90 → "1:30", 5 → "0:05", 0 → "0:00".
- */
-export function formatSeconds(seconds: number): string {
-  const clamped = Math.max(0, Math.floor(seconds));
-  const m = Math.floor(clamped / 60);
-  const s = clamped % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
+// formatSeconds is imported from utils/time.ts (single source of truth).
+// It remains accessible via TimerController.formatSeconds for backward compat.
 
 /**
  * Compute the full display state for a given timer snapshot.
@@ -191,7 +185,7 @@ function tick(dt: number): boolean {
  * Requirements: 16.2
  */
 function addBonusTime(ms: number): void {
-  if (!_timerState.initialised) {
+  if (!_timerState.initialised || ms <= 0) {
     return;
   }
   _timerState.remainingMs += ms;

@@ -97,6 +97,24 @@ export interface DirtyFlagState {
 /**
  * DirtyFlagManager tracks whether each rendering layer needs to be redrawn.
  *
+ * ### Frame-ordering contract
+ *
+ * Callers MUST invoke the update/query methods in a strict per-frame order to
+ * avoid stale or contradictory dirty flags:
+ *
+ *   1. `updateWaterBodyFlag(isActive)` — set the always-animate flag first.
+ *   2. `updateRingFlags(snapshots)`    — compare ring state, sets Rings + RingWake.
+ *   3. `updatePegFlags(snapshots)`     — compare peg state, sets Pegs.
+ *   4. Any explicit `markDirty()` calls for Bubbles, Ripples, WaterDisplacement.
+ *   5. Layer renderers call `isLayerDirty(layer)` — read-only from here.
+ *   6. After all layers are drawn: `resetPerFrameFlags()`.
+ *
+ * Violating this order (e.g. querying `isLayerDirty` before the corresponding
+ * update call, or calling `resetPerFrameFlags` before all layers have been
+ * drawn) will cause missed redraws or unnecessary redraws. The manager does
+ * NOT enforce ordering at runtime for performance reasons — correctness is
+ * the caller's responsibility.
+ *
  * ### Water surface (Layer 1)
  * The water surface ALWAYS animates — its waves move even when no input is
  * happening and no rings are moving.  Therefore `WaterBody` is always dirty
@@ -105,7 +123,7 @@ export interface DirtyFlagState {
  *
  * ### Ring layer
  * Dirty only when ring positions/velocities differ from the last snapshot.
- * The game loop writes new ring positions via `markRingsDirty(newSnapshot)`.
+ * The game loop writes new ring positions via `updateRingFlags(newSnapshot)`.
  *
  * ### Peg layer
  * Dirty only when peg occupancy states differ from the last snapshot.
@@ -157,11 +175,11 @@ export class DirtyFlagManager {
   /**
    * Synchronise the water body dirty flag with the active-gameplay state.
    *
+   * Frame-ordering: call this FIRST in the per-frame update sequence (step 1).
+   *
    * Design rule (Requirement 4.3):
    *   - `isActive = true`  → surface ALWAYS dirty (waves animate continuously).
    *   - `isActive = false` → surface is frozen; mark it clean to skip redraws.
-   *
-   * Call this once per frame before checking `isLayerDirty(WaterBody)`.
    */
   public updateWaterBodyFlag(isActive: boolean): void {
     // The water surface layer is unconditionally dirty during active gameplay:
@@ -180,6 +198,8 @@ export class DirtyFlagManager {
    *
    * Also updates the RingWake flag: wakes are dirty whenever any ring is
    * moving (vx or vy above the threshold).
+   *
+   * Frame-ordering: call this AFTER updateWaterBodyFlag (step 2).
    *
    * @param newSnapshots  Current ring positions/velocities from the game loop.
    */
@@ -205,6 +225,8 @@ export class DirtyFlagManager {
   /**
    * Compare the new peg snapshots against the last known state.
    * Marks the Pegs layer dirty only when occupancy state has changed.
+   *
+   * Frame-ordering: call this AFTER updateRingFlags (step 3).
    *
    * @param newSnapshots  Current peg states from the game loop.
    */
@@ -234,7 +256,10 @@ export class DirtyFlagManager {
   /**
    * Reset all non-water-surface flags to clean.
    *
-   * Called after all layers have been rendered for the current frame.
+   * Frame-ordering: call this LAST, after all layers have been rendered (step 6).
+   * Calling this before all `isLayerDirty` queries have completed will cause
+   * layers to miss their redraw for the current frame.
+   *
    * The water body flag is managed by `updateWaterBodyFlag` — not reset here.
    */
   public resetPerFrameFlags(): void {

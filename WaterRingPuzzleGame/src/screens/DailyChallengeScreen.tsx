@@ -11,11 +11,10 @@
  * Task: 8.5.3
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   FlatList,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,7 +27,18 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { useNavigation } from '@react-navigation/native';
 import { usePlayerStore } from '../store/slices/playerSlice';
+import { useChallengeStore } from '../store/slices/challengeSlice';
+import { useSocialStore } from '../store/slices/socialSlice';
+import { DS } from '../constants/designSystem';
+import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { GlassCard } from '../components/ui/GlassCard';
+import { GlassButton } from '../components/ui/GlassButton';
+import { Badge } from '../components/ui/Badge';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { Icon } from '../components/icons/GameIcons';
+import type { LeaderboardEntry as SocialLeaderboardEntry } from '../../types/social';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -54,25 +64,35 @@ function formatCountdown(s: number): string {
 interface DailyEntry {
   rank: number;
   displayName: string;
-  avatarEmoji: string;
+  avatarIconName: string;
   score: number;
   completionTime: number;
   isCurrentPlayer?: boolean;
 }
 
 // ---------------------------------------------------------------------------
-// Mock data
+// Avatar emoji -> icon name mapping
 // ---------------------------------------------------------------------------
 
-const MOCK_DAILY_ENTRIES: DailyEntry[] = [
-  { rank: 1, displayName: 'DailyKing', avatarEmoji: '👑', score: 9950, completionTime: 38 },
-  { rank: 2, displayName: 'QuickDrop', avatarEmoji: '⚡', score: 9800, completionTime: 45 },
-  { rank: 3, displayName: 'PegMaster', avatarEmoji: '🎯', score: 9650, completionTime: 52 },
-  { rank: 4, displayName: 'RingFlow', avatarEmoji: '🌊', score: 9400, completionTime: 60 },
-  { rank: 5, displayName: 'WaterPro', avatarEmoji: '💧', score: 9100, completionTime: 68 },
-];
+const AVATAR_ICON_COLORS: Record<string, string> = {
+  'crown': DS.colors.accent,
+  'lightning': DS.colors.warning,
+  'target': DS.colors.error,
+  'water-drop': DS.colors.secondary,
+  'profile': DS.colors.primary,
+};
 
-const RANK_BADGES: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+// ---------------------------------------------------------------------------
+// Fallback data
+// ---------------------------------------------------------------------------
+
+const FALLBACK_DAILY_ENTRIES: DailyEntry[] = [
+  { rank: 1, displayName: 'DailyKing', avatarIconName: 'crown', score: 9950, completionTime: 38 },
+  { rank: 2, displayName: 'QuickDrop', avatarIconName: 'lightning', score: 9800, completionTime: 45 },
+  { rank: 3, displayName: 'PegMaster', avatarIconName: 'target', score: 9650, completionTime: 52 },
+  { rank: 4, displayName: 'RingFlow', avatarIconName: 'water-drop', score: 9400, completionTime: 60 },
+  { rank: 5, displayName: 'WaterPro', avatarIconName: 'water-drop', score: 9100, completionTime: 68 },
+];
 
 // ---------------------------------------------------------------------------
 // CountdownDisplay — animated seconds digit
@@ -97,8 +117,11 @@ function CountdownDisplay({ seconds }: { seconds: number }): React.JSX.Element {
   }));
 
   return (
-    <Animated.View style={pulseStyle} accessible={true} accessibilityLabel={`Resets in ${formatCountdown(seconds)}`}>
-      <Text style={styles.countdownText}>{formatCountdown(seconds)}</Text>
+    <Animated.View style={[styles.countdownInner, pulseStyle]} accessible={true} accessibilityLabel={`Resets in ${formatCountdown(seconds)}`}>
+      <View style={styles.countdownRow}>
+        <Icon name="timer" size={DS.typography.size.title2} color={DS.colors.secondary} />
+        <Text style={styles.countdownText}>{formatCountdown(seconds)}</Text>
+      </View>
       <Text style={styles.countdownLabel}>until next daily</Text>
     </Animated.View>
   );
@@ -108,35 +131,63 @@ function CountdownDisplay({ seconds }: { seconds: number }): React.JSX.Element {
 // DailyLeaderboardRow
 // ---------------------------------------------------------------------------
 
-function DailyLeaderboardRow({ entry }: { entry: DailyEntry }): React.JSX.Element {
+const DailyLeaderboardRow = React.memo(function DailyLeaderboardRow({ entry }: { entry: DailyEntry }): React.JSX.Element {
+  const avatarInfo = { name: entry.avatarIconName as any, color: AVATAR_ICON_COLORS[entry.avatarIconName] ?? DS.colors.text.secondary };
+  const isTop3 = entry.rank <= 3;
+
   return (
     <View
       style={[styles.lbRow, entry.isCurrentPlayer && styles.lbRowSelf]}
       accessible={true}
       accessibilityLabel={`Rank ${entry.rank}: ${entry.displayName}, score ${entry.score}, time ${entry.completionTime} seconds`}
     >
-      <Text style={styles.lbRank} accessible={false}>{RANK_BADGES[entry.rank] ?? `#${entry.rank}`}</Text>
-      <View style={[styles.lbAvatar, entry.isCurrentPlayer && styles.lbAvatarSelf]}>
-        <Text style={styles.lbAvatarEmoji} accessible={false}>{entry.avatarEmoji}</Text>
+      {/* Rank column */}
+      <View style={styles.lbRankContainer}>
+        {isTop3 ? (
+          <View style={styles.lbRankBadge}>
+            <Icon name="trophy" size={DS.typography.size.callout} color={entry.rank === 1 ? DS.colors.accent : entry.rank === 2 ? DS.colors.text.secondary : DS.colors.warning} />
+            <Badge
+              value={entry.rank}
+              variant="rank"
+              color={entry.rank === 1 ? DS.colors.accent : entry.rank === 2 ? DS.colors.text.secondary : DS.colors.warning}
+              style={styles.rankBadge}
+            />
+          </View>
+        ) : (
+          <Text style={styles.lbRankText} accessible={false}>#{entry.rank}</Text>
+        )}
       </View>
+
+      {/* Avatar */}
+      <View style={[styles.lbAvatar, entry.isCurrentPlayer && styles.lbAvatarSelf]}>
+        <Icon name={avatarInfo.name} size={DS.typography.size.callout} color={avatarInfo.color} />
+      </View>
+
+      {/* Name */}
       <Text style={[styles.lbName, entry.isCurrentPlayer && styles.lbNameSelf]} numberOfLines={1}>
         {entry.displayName}{entry.isCurrentPlayer ? ' (You)' : ''}
       </Text>
+
+      {/* Score block */}
       <View style={styles.lbScoreBlock}>
         <Text style={styles.lbScore}>{entry.score.toLocaleString()}</Text>
         <Text style={styles.lbTime}>{entry.completionTime}s</Text>
       </View>
     </View>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // DailyChallengeScreen
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line max-lines-per-function
-export default function DailyChallengeScreen({ navigation }: { navigation?: { navigate: (s: string, p?: object) => void } }): React.JSX.Element {
+export default function DailyChallengeScreen({ navigation: navProp }: { navigation?: { navigate: (s: string, p?: object) => void } }): React.JSX.Element {
+  const navigation = useNavigation();
   const displayName = usePlayerStore((s) => s.displayName);
+  const activeChallengeConfig = useChallengeStore((s) => s.activeChallengeConfig);
+  const winLossState = useChallengeStore((s) => s.winLossState);
+  const leaderboardCache = useSocialStore((s) => s.leaderboardCache);
   const [countdown, setCountdown] = useState(secondsUntilMidnightUTC);
 
   useEffect((): (() => void) => {
@@ -144,90 +195,139 @@ export default function DailyChallengeScreen({ navigation }: { navigation?: { na
     return (): void => clearInterval(interval);
   }, []);
 
-  // Mock: today's challenge not yet completed
-  const todayCompleted = false;
-  const todayStars = 0;
+  // Derive daily challenge number from date (consistent across the day)
+  const dailyChallengeNumber = useMemo(() => {
+    const now = new Date();
+    const start = new Date(Date.UTC(2024, 0, 1)); // epoch for daily numbering
+    return Math.floor((now.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+  }, []);
+
+  // If the active challenge config matches today's daily and was won, mark as completed
+  const todayCompleted = activeChallengeConfig?.challengeNumber === dailyChallengeNumber && winLossState === 'won';
+  const todayStars = todayCompleted ? 3 : 0; // Star count not tracked per-daily; default to 3 on completion
+
+  // Wire leaderboard data from store
+  const dailyLeaderboardKey = `daily_${dailyChallengeNumber}`;
+  const cachedDailyEntries = leaderboardCache[dailyLeaderboardKey];
+
+  function mapToDailyEntry(entries: SocialLeaderboardEntry[]): DailyEntry[] {
+    return entries.map((e) => ({
+      rank: e.rank,
+      displayName: e.displayName,
+      avatarIconName: e.avatarUrl || 'profile',
+      score: e.score,
+      completionTime: Math.round(e.completionTimeMs / 1000),
+    }));
+  }
+
+  const dailyEntries: DailyEntry[] = cachedDailyEntries
+    ? mapToDailyEntry(cachedDailyEntries)
+    : FALLBACK_DAILY_ENTRIES;
 
   const selfEntry: DailyEntry = {
     rank: 23,
     displayName: displayName ?? 'You',
-    avatarEmoji: '🧑',
+    avatarIconName: 'profile',
     score: 7200,
     completionTime: 80,
     isCurrentPlayer: true,
   };
 
   const handlePlay = useCallback((): void => {
-    navigation?.navigate('Game', { isDaily: true });
-  }, [navigation]);
+    // Use navProp if available (direct prop), fall back to useNavigation() hook
+    const nav = navProp ?? navigation;
+    (nav as any).navigate('Game', { isDaily: true });
+  }, [navProp, navigation]);
 
   const renderRow = useCallback(({ item }: { item: DailyEntry }): React.JSX.Element => (
     <DailyLeaderboardRow entry={item} />
   ), []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer accessibilityLabel="Daily Challenge Screen">
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* Title */}
-        <Text style={styles.title} accessibilityRole="header">Daily Challenge</Text>
+        {/* Header with back button */}
+        <View style={styles.headerRow}>
+          <Pressable onPress={() => navigation.goBack()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
+            <Icon name="back" size={28} color={DS.colors.text.primary} />
+          </Pressable>
+          <Text style={styles.pageTitle} accessibilityRole="header">Daily Challenge</Text>
+        </View>
 
         {/* Countdown */}
-        <View style={styles.countdownCard}>
+        <GlassCard variant="strong" glow={DS.colors.secondary} style={styles.countdownCard}>
           <CountdownDisplay seconds={countdown} />
-        </View>
+        </GlassCard>
 
         {/* Today's challenge card */}
-        <View style={styles.challengeCard}>
-          <View style={styles.challengeInfo}>
-            <Text style={styles.challengeLabel}>{'TODAY\'S CHALLENGE'}</Text>
-            <Text style={styles.challengeNum}>🗓️ Daily #127</Text>
-            <Text style={styles.challengeDesc}>Precision Mode · 4 pegs · 90 seconds</Text>
-            {todayCompleted ? (
-              <View style={styles.completedRow}>
-                {[1, 2, 3].map((i): React.JSX.Element => (
-                  <Text key={i} style={[styles.star, i <= todayStars && styles.starFilled]} accessible={false}>
-                    {i <= todayStars ? '★' : '☆'}
-                  </Text>
-                ))}
-                <Text style={styles.completedLabel}>Completed!</Text>
+        <GlassCard variant="medium" style={styles.challengeCard}>
+          <View style={styles.challengeContent}>
+            <View style={styles.challengeInfo}>
+              <Text style={styles.challengeLabel}>{"TODAY'S CHALLENGE"}</Text>
+              <View style={styles.challengeNumRow}>
+                <Icon name="challenge" size={DS.typography.size.headline} color={DS.colors.secondary} />
+                <Text style={styles.challengeNum}>{`Daily #${dailyChallengeNumber}`}</Text>
               </View>
-            ) : null}
+              <Text style={styles.challengeDesc}>Precision Mode  ·  4 pegs  ·  90 seconds</Text>
+              {todayCompleted ? (
+                <View style={styles.completedRow}>
+                  {[1, 2, 3].map((i): React.JSX.Element => (
+                    <Icon
+                      key={i}
+                      name={i <= todayStars ? 'star-filled' : 'star-empty'}
+                      size={DS.typography.size.callout}
+                      color={i <= todayStars ? DS.colors.accent : DS.colors.text.tertiary}
+                    />
+                  ))}
+                  <View style={styles.completedBadgeWrap}>
+                    <Icon name="check" size={DS.typography.size.caption1} color={DS.colors.success} />
+                    <Badge variant="status" value="Completed" color={DS.colors.success} />
+                  </View>
+                </View>
+              ) : null}
+            </View>
+            <View style={styles.challengeAction}>
+              {todayCompleted ? (
+                <GlassButton
+                  variant="ghost"
+                  size="lg"
+                  iconLeft="replay"
+                  label="Replay"
+                  onPress={handlePlay}
+                />
+              ) : (
+                <GlassButton
+                  variant="primary"
+                  size="lg"
+                  iconLeft="play"
+                  label="Play"
+                  onPress={handlePlay}
+                />
+              )}
+            </View>
           </View>
-          <Pressable
-            onPress={handlePlay}
-            style={({ pressed }: { pressed: boolean }) => [
-              styles.playBtn,
-              todayCompleted && styles.playBtnReplay,
-              pressed ? styles.playBtnPressed : undefined,
-            ]}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={todayCompleted ? 'Replay daily challenge' : 'Play daily challenge'}
-          >
-            <Text style={styles.playBtnText}>{todayCompleted ? '↺ Replay' : '▶ Play'}</Text>
-          </Pressable>
-        </View>
+        </GlassCard>
 
         {/* Leaderboard */}
-        <Text style={styles.sectionTitle}>{'Today\'s Leaderboard'}</Text>
-        <View style={styles.lbCard}>
+        <SectionHeader title="Today's Leaderboard" style={styles.sectionHeader} />
+        <GlassCard variant="subtle" noAnimation style={styles.lbCard}>
           <FlatList
-            data={MOCK_DAILY_ENTRIES}
+            data={dailyEntries}
             renderItem={renderRow}
             keyExtractor={(item): string => String(item.rank)}
             scrollEnabled={false}
           />
-        </View>
+        </GlassCard>
 
         {/* Pinned self row */}
-        <View style={styles.selfRowWrap}>
+        <GlassCard variant="medium" glow={DS.colors.primary} style={styles.selfRowWrap}>
           <DailyLeaderboardRow entry={selfEntry} />
-        </View>
+        </GlassCard>
 
-        <View style={{ height: 32 }} />
+        <View style={{ height: DS.spacing.xxxl }} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
@@ -236,37 +336,180 @@ export default function DailyChallengeScreen({ navigation }: { navigation?: { na
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#070f1e' },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 16 },
-  title: { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 16 },
-  countdownCard: { backgroundColor: 'rgba(79,195,247,0.07)', borderRadius: 18, padding: 20, alignItems: 'center', marginBottom: 14, borderWidth: 1, borderColor: 'rgba(79,195,247,0.2)' },
-  countdownText: { color: '#4FC3F7', fontSize: 42, fontWeight: '900', letterSpacing: 2, fontVariant: ['tabular-nums'] },
-  countdownLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 },
-  challengeCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', gap: 12 },
-  challengeInfo: { flex: 1, gap: 4 },
-  challengeLabel: { color: '#4FC3F7', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5 },
-  challengeNum: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  challengeDesc: { color: 'rgba(255,255,255,0.45)', fontSize: 12 },
-  completedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  star: { fontSize: 16, color: 'rgba(255,255,255,0.2)' },
-  starFilled: { color: '#FFD740' },
-  completedLabel: { color: '#66BB6A', fontSize: 12, fontWeight: '700', marginLeft: 4 },
-  playBtn: { backgroundColor: '#4FC3F7', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', minWidth: 80 },
-  playBtnReplay: { backgroundColor: 'rgba(79,195,247,0.2)', borderWidth: 1.5, borderColor: '#4FC3F7' },
-  playBtnPressed: { opacity: 0.8 },
-  playBtnText: { color: '#070f1e', fontWeight: '800', fontSize: 14 },
-  sectionTitle: { color: '#fff', fontSize: 17, fontWeight: '700', marginBottom: 10 },
-  lbCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', marginBottom: 2 },
-  lbRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, gap: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  lbRowSelf: { backgroundColor: 'rgba(79,195,247,0.08)' },
-  lbRank: { color: '#fff', fontSize: 18, width: 30, textAlign: 'center' },
-  lbAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
-  lbAvatarSelf: { backgroundColor: 'rgba(79,195,247,0.2)' },
-  lbAvatarEmoji: { fontSize: 16 },
-  lbName: { flex: 1, color: '#fff', fontSize: 13, fontWeight: '600' },
-  lbNameSelf: { color: '#4FC3F7' },
-  lbScoreBlock: { alignItems: 'flex-end' },
-  lbScore: { color: '#FFD740', fontSize: 13, fontWeight: '700' },
-  lbTime: { color: 'rgba(255,255,255,0.4)', fontSize: 11 },
-  selfRowWrap: { borderTopWidth: 1, borderTopColor: 'rgba(79,195,247,0.2)', backgroundColor: 'rgba(10,28,52,0.9)', borderRadius: 12, overflow: 'hidden' },
+  scrollContent: {
+    paddingHorizontal: DS.spacing.lg,
+    paddingTop: DS.spacing.lg,
+  },
+
+  // Header
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.md,
+    marginBottom: DS.spacing.xl,
+  },
+  pageTitle: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.title2,
+    fontWeight: DS.typography.weight.heavy,
+    letterSpacing: DS.typography.letterSpacing.title2,
+  },
+
+  // Countdown
+  countdownCard: {
+    alignItems: 'center',
+    marginBottom: DS.spacing.lg,
+  },
+  countdownInner: {
+    alignItems: 'center',
+  },
+  countdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.sm,
+  },
+  countdownText: {
+    color: DS.colors.secondary,
+    fontSize: DS.typography.size.title1,
+    fontWeight: DS.typography.weight.black,
+    letterSpacing: DS.typography.letterSpacing.title1,
+    fontVariant: ['tabular-nums'],
+  },
+  countdownLabel: {
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.caption1,
+    textAlign: 'center',
+    marginTop: DS.spacing.xxs,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+
+  // Challenge card
+  challengeCard: {
+    marginBottom: DS.spacing.xl,
+  },
+  challengeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.md,
+  },
+  challengeInfo: {
+    flex: 1,
+    gap: DS.spacing.xxs,
+  },
+  challengeLabel: {
+    color: DS.colors.secondary,
+    fontSize: DS.typography.size.caption2,
+    fontWeight: DS.typography.weight.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  challengeNumRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.sm,
+  },
+  challengeNum: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.headline,
+    fontWeight: DS.typography.weight.heavy,
+    letterSpacing: DS.typography.letterSpacing.headline,
+  },
+  challengeDesc: {
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.caption1,
+  },
+  completedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.xxs,
+    marginTop: DS.spacing.xxs,
+  },
+  completedBadgeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.xxs,
+    marginLeft: DS.spacing.xs,
+  },
+  challengeAction: {
+    alignItems: 'center',
+  },
+
+  // Section header
+  sectionHeader: {
+    marginBottom: DS.spacing.sm,
+  },
+
+  // Leaderboard
+  lbCard: {
+    overflow: 'hidden',
+    marginBottom: DS.spacing.xxxs,
+  },
+  lbRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: DS.spacing.md,
+    paddingHorizontal: DS.spacing.lg,
+    gap: DS.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: DS.colors.glass.border,
+  },
+  lbRowSelf: {
+    backgroundColor: 'rgba(10,132,255,0.08)',
+  },
+  lbRankContainer: {
+    width: DS.spacing.xxxl,
+    alignItems: 'center',
+  },
+  lbRankBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.xxxs,
+  },
+  rankBadge: {
+    // Positioned next to trophy icon
+  },
+  lbRankText: {
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.subhead,
+    fontWeight: DS.typography.weight.semibold,
+  },
+  lbAvatar: {
+    width: DS.spacing.xxxl,
+    height: DS.spacing.xxxl,
+    borderRadius: DS.spacing.lg,
+    backgroundColor: DS.colors.glass.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lbAvatarSelf: {
+    backgroundColor: 'rgba(10,132,255,0.15)',
+  },
+  lbName: {
+    flex: 1,
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.footnote,
+    fontWeight: DS.typography.weight.semibold,
+  },
+  lbNameSelf: {
+    color: DS.colors.primary,
+  },
+  lbScoreBlock: {
+    alignItems: 'flex-end',
+  },
+  lbScore: {
+    color: DS.colors.accent,
+    fontSize: DS.typography.size.footnote,
+    fontWeight: DS.typography.weight.bold,
+  },
+  lbTime: {
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.caption2,
+  },
+
+  // Self row pinned
+  selfRowWrap: {
+    overflow: 'hidden',
+    marginTop: DS.spacing.xxs,
+  },
 });

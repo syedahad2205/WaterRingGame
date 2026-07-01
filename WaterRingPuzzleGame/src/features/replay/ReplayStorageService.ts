@@ -23,6 +23,8 @@ export interface UploadResult {
 export class ReplayStorageService {
   readonly STORAGE_PATH = 'replays';
   readonly MAX_REPLAY_SIZE_BYTES = 500_000; // 500 KB
+  /** Maximum replays stored per user to prevent unbounded storage growth. */
+  readonly MAX_REPLAYS_PER_USER = 50;
 
   // -------------------------------------------------------------------------
   // upload
@@ -76,7 +78,7 @@ export class ReplayStorageService {
       // Format: {userId}_{challengeNumber}_{timestamp}_{random}
       const parts = replayId.split('_');
       if (parts.length < 4) {
-        console.warn('[ReplayStorageService] Invalid replayId format:', replayId);
+        if (__DEV__) console.warn('[ReplayStorageService] Invalid replayId format:', replayId);
         return null;
       }
       const userId = parts[0];
@@ -87,7 +89,7 @@ export class ReplayStorageService {
 
       const response = await fetch(downloadUrl);
       if (!response.ok) {
-        console.warn('[ReplayStorageService] Download failed:', response.status);
+        if (__DEV__) console.warn('[ReplayStorageService] Download failed:', response.status);
         return null;
       }
 
@@ -97,7 +99,7 @@ export class ReplayStorageService {
 
       return replayData;
     } catch (err: unknown) {
-      console.warn('[ReplayStorageService] download error:', err);
+      if (__DEV__) console.warn('[ReplayStorageService] download error:', err);
       return null;
     }
   }

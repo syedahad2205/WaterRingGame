@@ -21,39 +21,57 @@
  *
  * ## Session lifecycle (Task 7.1.2)
  *   Win  : GameLoop fires onWin → challengeSlice.recordWin → compute star count
- *          → compute coins → show VictoryModal (Alert) → log analytics
+ *          → compute coins → navigate to VictoryScreen → log analytics
  *          → onboardingSlice.progressTutorial(challengeNumber)
- *   Loss : timer expires → challengeSlice.recordLoss → show ContinueModal (Alert)
- *          → if declined show DefeatModal (Alert)
+ *   Loss : timer expires → challengeSlice.recordLoss → navigate to ContinueScreen
+ *          → if declined navigate to DefeatScreen
  *   Quit : hardware back / quit button → confirmation dialog → GameLoop.stop()
  *          → navigate back → log analytics
  */
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
+  ActivityIndicator,
   BackHandler,
   StyleSheet,
   Text,
   View,
+  type LayoutChangeEvent,
 } from 'react-native';
+
+import GameRenderer from '../features/game/rendering/GameRenderer';
 
 import { generateChallenge } from '../features/game/generation/ChallengeGenerator';
 import { ChallengeGenerator } from '../features/game/generation/ChallengeGenerator';
 import { GameLoop } from '../features/game/core/GameLoop';
+import { PhysicsWorld } from '../features/game/physics/PhysicsWorld';
 import { useChallengeStore } from '../store/slices/challengeSlice';
 import { useOnboardingStore } from '../store/slices/onboardingSlice';
 import { useEconomyStore } from '../store/slices/economySlice';
+import { usePlayerProgressionStore } from '../store/slices/playerProgressionSlice';
 import { usePhysicsSharedState } from '../hooks/usePhysicsSharedState';
+import { useAudio } from '../hooks/useAudio';
+import { triggerHaptic } from '../constants/hapticPatterns';
+import { DS } from '../constants/designSystem';
 import { audioEngine } from '../features/audio/AudioEngine';
-import { AnalyticsService } from '../services/firebase/AnalyticsService';
+import { analyticsService } from '../services/firebase/AnalyticsService';
+import { ANALYTICS_EVENTS } from '../constants/analyticsEvents';
+import { AdService } from '../features/economy/AdService';
+import { syncManager } from '../services/sync/SyncManager';
+import { updateProgress } from '../features/progression/MissionService';
+import { AchievementEngine } from '../features/progression/AchievementEngine';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import type { ChallengeConfig } from '../types/challenge';
 
+// Stable singleton AchievementEngine — persists across handleWin calls
+// so reportedUnlocks tracks previously fired events within this session.
+const achievementEngine = new AchievementEngine();
+
 // ---------------------------------------------------------------------------
-// Module-level analytics instance (lightweight stub — no network calls)
+// Module-level analytics reference (uses shared singleton from AnalyticsService)
 // ---------------------------------------------------------------------------
 
-const analytics = new AnalyticsService();
+const analytics = analyticsService;
 
 // ---------------------------------------------------------------------------
 // Star-count computation helpers (Task 7.1.2: win flow)
@@ -138,6 +156,13 @@ interface GameScreenProps {
 // eslint-disable-next-line max-lines-per-function
 export default function GameScreen({ route, navigation }: GameScreenProps): React.JSX.Element {
   const bridge = usePhysicsSharedState();
+  const audio = useAudio();
+  const [arenaSize, setArenaSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+
+  const handleArenaLayout = useCallback((event: LayoutChangeEvent): void => {
+    const { width, height } = event.nativeEvent.layout;
+    setArenaSize({ width, height });
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Determine challenge number and variant
@@ -148,20 +173,40 @@ export default function GameScreen({ route, navigation }: GameScreenProps): Reac
   );
 
   const isDaily = route?.params?.isDaily ?? false;
+  const rawChallengeNumber = route?.params?.challengeNumber;
+  const parsedChallengeNumber = isDaily
+    ? 0
+    : typeof rawChallengeNumber === 'string'
+      ? parseInt(rawChallengeNumber, 10) || (highestChallengeShown + 1)
+      : (rawChallengeNumber ?? highestChallengeShown + 1);
+  // Guard against negative, zero (non-daily), NaN, or absurdly large deep-link values
   const challengeNumber = isDaily
     ? 0
-    : (route?.params?.challengeNumber ?? highestChallengeShown + 1);
+    : (!Number.isFinite(parsedChallengeNumber) || parsedChallengeNumber < 1 || parsedChallengeNumber > 10000)
+      ? (highestChallengeShown + 1)
+      : parsedChallengeNumber;
 
   // Ref mirrors to avoid stale closures in callbacks
   const loopStartedRef = useRef(false);
   const challengeNumberRef = useRef(challengeNumber);
   const challengeConfigRef = useRef<ChallengeConfig | null>(null);
+  /** Guard: prevents handleWin / handleTimerExpire from firing twice (race condition). */
+  const hasEndedRef = useRef(false);
+
+  // Keep challengeNumberRef in sync when props change (e.g. deep link mid-game).
+  useEffect(() => {
+    challengeNumberRef.current = challengeNumber;
+  }, [challengeNumber]);
 
   // ---------------------------------------------------------------------------
   // Win handler (Task 7.1.2)
   // ---------------------------------------------------------------------------
 
   const handleWin = useCallback((): void => {
+    // Guard: prevent double-fire if win and timer-expire race each other.
+    if (hasEndedRef.current) return;
+    hasEndedRef.current = true;
+
     const store = useChallengeStore.getState();
     store.recordWin();
 
@@ -177,184 +222,152 @@ export default function GameScreen({ route, navigation }: GameScreenProps): Reac
     // Credit coins to economy
     useEconomyStore.getState().creditCoins(coinsEarned, 'challenge_win');
 
-    // Trigger audio victory state
+    // Update lifetime stats
+    const progression = usePlayerProgressionStore.getState();
+    progression.incrementLifetimeGamesPlayed();
+    progression.incrementLifetimeCoinsEarned(coinsEarned);
+
+    // ── Update mission progress ──────────────────────────────────────────
+    // challenge_complete and star_earned are the two events always fired on win.
+    const allMissions = [...progression.dailyMissions, ...progression.weeklyMissions];
+    let updatedMissions = updateProgress(allMissions, 'challenge_complete', 1);
+    updatedMissions = updateProgress(updatedMissions, 'star_earned', stars);
+    // Split back into daily / weekly and persist
+    const dailyCount = progression.dailyMissions.length;
+    progression.setDailyMissions(updatedMissions.slice(0, dailyCount));
+    progression.setWeeklyMissions(updatedMissions.slice(dailyCount));
+
+    // ── Evaluate achievements (stable singleton — avoids re-fire) ────────
+    try {
+      const playerState = require('../store/slices/playerSlice').usePlayerStore.getState();
+      achievementEngine.evaluate({
+        challengesCompleted: progression.lifetimeGamesPlayed,
+        totalStars: (playerState?.totalStars ?? 0) + stars,
+        currentWinStreak: progression.currentStreak,
+        noContWins: progression.lifetimeGamesPlayed, // best-effort proxy
+        fastWins: 0, // TODO: track fast wins in progression store
+        dailiesCompleted: 0, // TODO: track daily completions
+        prestigeCount: playerState?.prestige ?? 0,
+        inTop10: false,
+        allTemplateBronze: false,
+        anyTemplatePlatinum: false,
+      });
+    } catch (err) {
+      if (__DEV__) {
+        console.warn('[GameScreen] Achievement evaluation failed:', err);
+      }
+    }
+
+    // ── Enqueue cloud sync for this win ──────────────────────────────────
+    syncManager.enqueue({
+      type: 'score_submit',
+      payload: {
+        challengeNumber: cn,
+        stars,
+        coinsEarned,
+        isDaily,
+        completedAt: Date.now(),
+      },
+    });
+
+    // Trigger audio + haptic victory feedback
+    triggerHaptic('victory');
+    audio.playSFX('victory_fanfare');
     audioEngine.onVictory();
+
+    // Preload results screen sounds
+    audio.preloadGroup('results');
 
     // Progress onboarding tutorial (unlock features gated on this challenge number)
     useOnboardingStore.getState().progressTutorial(cn);
 
     // Log analytics — challenge_won event with stars, coins, challengeNumber
-    analytics.logEvent('challenge_won', {
+    analytics.logEvent(ANALYTICS_EVENTS.GAME_COMPLETE, {
       challengeNumber: cn,
       stars,
       coinsEarned,
       isDaily,
     });
 
-    // Show Victory Modal (Alert as placeholder — will be replaced by VictoryModal component)
-    const starEmojis = '⭐'.repeat(stars);
-    Alert.alert(
-      `🎉 Challenge Complete! ${starEmojis}`,
-      `${stars} star${stars !== 1 ? 's' : ''}\nCoins earned: ${coinsEarned}`,
-      [
-        {
-          text: 'Next Challenge',
-          onPress: (): void => {
-            navigation?.navigate('Game', {
-              challengeNumber: cn + 1,
-            });
-          },
-        },
-        {
-          text: 'Home',
-          onPress: (): void => navigation?.goBack(),
-        },
-      ],
-    );
-  }, [navigation, isDaily]);
+    // Navigate to VictoryScreen with earned rewards
+    GameLoop.stop();
+    navigation?.navigate('Victory', {
+      stars,
+      coinsEarned,
+      challengeNumber: cn,
+    });
+
+    // Show interstitial ad if frequency allows
+    AdService.getInstance().showInterstitial().catch(() => {});
+  }, [navigation, isDaily, audio]);
 
   // ---------------------------------------------------------------------------
   // Continue / Defeat flow (Task 7.1.2 — loss path helpers)
   // ---------------------------------------------------------------------------
-
-  /** Show the Defeat modal after a player declines to continue. */
-  const showDefeatModal = useCallback((): void => {
-    audioEngine.onDefeat();
-
-    const cn = challengeNumberRef.current;
-    analytics.logEvent('challenge_defeated', {
-      challengeNumber: cn,
-      isDaily,
-    });
-
-    // Show Defeat Modal (Alert placeholder — will be replaced by DefeatModal component)
-    Alert.alert(
-      '💀 Challenge Failed',
-      'Better luck next time!',
-      [
-        {
-          text: 'Try Again',
-          onPress: (): void => {
-            // Reload the same challenge
-            const config = isDaily
-              ? new ChallengeGenerator().generateDaily(new Date())
-              : generateChallenge(cn);
-
-            useChallengeStore.getState().loadChallenge(config);
-            challengeConfigRef.current = config;
-
-            GameLoop.start({
-              challengeConfig: config,
-              bridge,
-              onWin: handleWin,
-              onTimerExpire: handleTimerExpire,
-            });
-
-            audioEngine.startChallenge(config.arena.themeId);
-          },
-        },
-        {
-          text: 'Home',
-          style: 'cancel',
-          onPress: (): void => navigation?.goBack(),
-        },
-      ],
-    );
-  }, [bridge, handleWin, isDaily, navigation]); // handleTimerExpire declared below
-
-  // Forward ref so showDefeatModal can call handleTimerExpire after it is defined
-  const handleTimerExpireRef = useRef<() => void>(() => undefined);
 
   // ---------------------------------------------------------------------------
   // Timer expiry / loss handler (Task 7.1.2)
   // ---------------------------------------------------------------------------
 
   const handleTimerExpire = useCallback((): void => {
+    // Guard: prevent double-fire if timer-expire and win race each other.
+    if (hasEndedRef.current) return;
+    hasEndedRef.current = true;
+
     const store = useChallengeStore.getState();
     store.recordLoss();
 
-    const cn = challengeNumberRef.current;
+    usePlayerProgressionStore.getState().incrementLifetimeGamesPlayed();
 
-    analytics.logEvent('timer_expired', {
+    const cn = challengeNumberRef.current;
+    const config = challengeConfigRef.current;
+    const ringsTotal = config?.rings.length ?? 0;
+    const ringsPlaced = store.pegStates.filter((p) => p.settledRingId != null).length;
+
+    // Trigger audio + haptic defeat feedback
+    triggerHaptic('defeat');
+    audio.playSFX('defeat_sound');
+
+    analytics.logEvent(ANALYTICS_EVENTS.GAME_FAIL, {
       challengeNumber: cn,
       isDaily,
     });
 
-    // Show Continue Modal (Alert placeholder — will be replaced by ContinueModal component)
-    Alert.alert(
-      '⏰ Time\'s Up!',
-      'Would you like to continue playing?',
-      [
-        {
-          text: 'Continue',
-          onPress: (): void => {
-            // Use continue: restore timer, increment continue count
-            useChallengeStore.getState().useContinue();
+    // Show interstitial ad if frequency allows
+    AdService.getInstance().showInterstitial().catch(() => {});
 
-            const config = challengeConfigRef.current;
-            if (config) {
-              // Restart the loop with fresh time for this continue
-              GameLoop.start({
-                challengeConfig: config,
-                bridge,
-                onWin: handleWin,
-                onTimerExpire: handleTimerExpireRef.current,
-              });
-            }
-
-            analytics.logEvent('continue_used', {
-              challengeNumber: cn,
-              continueCount: useChallengeStore.getState().continueCount,
-            });
-          },
-        },
-        {
-          text: 'Give Up',
-          style: 'destructive',
-          onPress: (): void => showDefeatModal(),
-        },
-      ],
-    );
-  }, [bridge, handleWin, isDaily, showDefeatModal]);
-
-  // Keep the ref up-to-date so showDefeatModal's Try Again uses the latest version
-  useEffect(() => {
-    handleTimerExpireRef.current = handleTimerExpire;
-  }, [handleTimerExpire]);
+    // Navigate to ContinueScreen — it handles the continue/defeat decision
+    GameLoop.stop();
+    navigation?.navigate('Continue', {
+      challengeNumber: cn,
+      ringsPlaced,
+      ringsTotal,
+    });
+  }, [isDaily, navigation, audio]);
 
   // ---------------------------------------------------------------------------
   // Quit flow: hardware back button / quit action (Task 7.1.2)
   // ---------------------------------------------------------------------------
 
+  const [showQuitDialog, setShowQuitDialog] = useState(false);
+
   const handleQuit = useCallback((): void => {
+    setShowQuitDialog(true);
+  }, []);
+
+  const handleConfirmQuit = useCallback((): void => {
+    setShowQuitDialog(false);
     const cn = challengeNumberRef.current;
+    GameLoop.stop();
+    audio.pause();
 
-    Alert.alert(
-      'Quit Challenge?',
-      'Your progress in this challenge will be lost.',
-      [
-        {
-          text: 'Keep Playing',
-          style: 'cancel',
-        },
-        {
-          text: 'Quit',
-          style: 'destructive',
-          onPress: (): void => {
-            GameLoop.stop();
-            audioEngine.pause();
+    analytics.logEvent(ANALYTICS_EVENTS.GAME_QUIT, {
+      challengeNumber: cn,
+      isDaily,
+    });
 
-            analytics.logEvent('challenge_quit', {
-              challengeNumber: cn,
-              isDaily,
-            });
-
-            navigation?.goBack();
-          },
-        },
-      ],
-    );
-  }, [navigation, isDaily]);
+    navigation?.goBack();
+  }, [navigation, isDaily, audio]);
 
   // Register Android hardware back handler
   useEffect(() => {
@@ -383,9 +396,16 @@ export default function GameScreen({ route, navigation }: GameScreenProps): Reac
 
     // ── Step 2: Generate challenge config ────────────────────────────────────
     // Supports both regular and daily challenges (Requirement 7.1.1)
-    const config: ChallengeConfig = isDaily
-      ? new ChallengeGenerator().generateDaily(new Date())
-      : generateChallenge(challengeNumber);
+    let config: ChallengeConfig;
+    try {
+      config = isDaily
+        ? new ChallengeGenerator().generateDaily(new Date())
+        : generateChallenge(challengeNumber);
+    } catch (err) {
+      if (__DEV__) console.warn('[GameScreen] Challenge generation failed:', err);
+      navigation?.goBack();
+      return;
+    }
 
     challengeConfigRef.current = config;
 
@@ -402,16 +422,40 @@ export default function GameScreen({ route, navigation }: GameScreenProps): Reac
       onTimerExpire: handleTimerExpire,
     });
 
-    // ── Step 5: Start audio (non-blocking) ───────────────────────────────────
+    // ── Step 4b: Wire progressive music hooks into physics/timer callbacks ────
+    // These bridge useAudio lifecycle methods into the non-React GameLoop/PhysicsWorld.
+    let ringLandCount = 0;
+    const totalRings = config.rings.length;
+    const midpointThreshold = Math.ceil(totalRings / 2);
+
+    PhysicsWorld.setOnRingLandedCallback(() => {
+      ringLandCount++;
+      if (ringLandCount === 1) {
+        audio.onFirstRingLanded();
+      }
+      if (ringLandCount === midpointThreshold) {
+        audio.onChallengeMidpoint();
+      }
+    });
+
+    GameLoop.setOnTimerAmberCallback(() => {
+      audio.onTimerAmber();
+    });
+    GameLoop.setOnTimerCriticalCallback(() => {
+      audio.onTimerCritical();
+    });
+
+    // ── Step 5: Preload gameplay sounds and start audio (non-blocking) ────────
     // audioEngine.startChallenge() — Requirement 7.1.1
-    audioEngine.startChallenge(config.arena.themeId);
+    audio.preloadGroup('gameplay');
+    audio.startChallenge(config.arena.themeId);
 
     // ── Step 6: Measure load time and log analytics ───────────────────────────
     const loadTimeMs = Date.now() - startTime;
 
     // Analytics: challenge_start event with challengeNumber and loadTimeMs
     // — Requirement 7.1.1
-    analytics.logEvent('challenge_start', {
+    analytics.logEvent(ANALYTICS_EVENTS.GAME_START, {
       challengeNumber: config.challengeNumber,
       loadTimeMs,
       isDaily: config.isDailyChallenge,
@@ -421,20 +465,30 @@ export default function GameScreen({ route, navigation }: GameScreenProps): Reac
 
     // Warn if load time exceeded the < 500ms target (Requirement 7.1.1 / 43.6)
     if (loadTimeMs > 500) {
-      console.warn('[GameScreen] Challenge load time exceeded 500ms target:', loadTimeMs, 'ms');
+      if (__DEV__) console.warn('[GameScreen] Challenge load time exceeded 500ms target:', loadTimeMs, 'ms');
     }
 
     // Cleanup on unmount
     return (): void => {
       GameLoop.stop();
-      audioEngine.pause();
+      audio.pause();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
 
   // ---------------------------------------------------------------------------
-  // Render — minimal placeholder layout
+  // Render
   // ---------------------------------------------------------------------------
+
+  const config = challengeConfigRef.current;
+
+  if (config == null) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color={DS.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View
@@ -450,19 +504,33 @@ export default function GameScreen({ route, navigation }: GameScreenProps): Reac
         {isDaily ? 'Daily Challenge' : `Challenge ${challengeNumber}`}
       </Text>
 
-      {/* Game canvas will be inserted here by GameRenderer in a future task */}
       <View
         style={styles.arena}
+        onLayout={handleArenaLayout}
         accessible={false}
         accessibilityLabel="Game arena"
-      />
-
-      <Text
-        style={styles.hint}
-        accessibilityRole="text"
       >
-        Press the buttons to move the rings
-      </Text>
+        {config != null && arenaSize.width > 0 && arenaSize.height > 0 ? (
+          <GameRenderer
+            bridge={bridge}
+            config={config}
+            width={arenaSize.width}
+            height={arenaSize.height}
+            isActive={true}
+          />
+        ) : null}
+      </View>
+
+      <ConfirmDialog
+        visible={showQuitDialog}
+        title="Quit Challenge?"
+        message="Your progress in this challenge will be lost."
+        confirmLabel="Quit"
+        cancelLabel="Keep Playing"
+        confirmVariant="destructive"
+        onConfirm={handleConfirmQuit}
+        onCancel={() => setShowQuitDialog(false)}
+      />
     </View>
   );
 }
@@ -474,25 +542,21 @@ export default function GameScreen({ route, navigation }: GameScreenProps): Reac
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a2342',
+    backgroundColor: DS.colors.background,
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
   challengeLabel: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 48,
-    marginBottom: 8,
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.headline,
+    fontWeight: DS.typography.weight.semibold,
+    letterSpacing: DS.typography.letterSpacing.headline,
+    marginTop: DS.spacing.massive,
+    marginBottom: DS.spacing.sm,
   },
   arena: {
     flex: 1,
     width: '100%',
-    backgroundColor: '#0d3562',
-  },
-  hint: {
-    color: '#aac',
-    fontSize: 13,
-    paddingVertical: 16,
+    backgroundColor: DS.colors.surfaceDark,
   },
 });

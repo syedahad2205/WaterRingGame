@@ -216,9 +216,10 @@ describe('generateChallenge()', () => {
     );
   });
 
-  it('intelligence metadata qualityScore is 0.75 (placeholder)', () => {
+  it('intelligence metadata qualityScore is computed by ChallengeScorer', () => {
     const config = generateChallenge(1);
-    expect(config.intelligenceMetadata.qualityScore).toBe(0.75);
+    expect(config.intelligenceMetadata.qualityScore).toBeGreaterThanOrEqual(0.0);
+    expect(config.intelligenceMetadata.qualityScore).toBeLessThanOrEqual(1.0);
   });
 
   it('intelligence metadata difficultyDrivers is non-empty array of strings', () => {

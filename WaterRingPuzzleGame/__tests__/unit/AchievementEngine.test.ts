@@ -64,11 +64,28 @@ describe('AchievementEngine', () => {
     });
   });
 
-  describe('evaluate (stateless stub)', () => {
+  describe('evaluate', () => {
     it('returns empty array when no conditions met', () => {
       const result = engine.evaluate(EMPTY_SNAPSHOT);
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBe(0);
+    });
+
+    it('returns newly unlocked achievement ids when conditions are met', () => {
+      const result = engine.evaluate({ ...EMPTY_SNAPSHOT, challengesCompleted: 1 });
+      expect(result).toContain('first_win');
+    });
+
+    it('does not return same achievement twice on repeated calls', () => {
+      engine.evaluate({ ...EMPTY_SNAPSHOT, challengesCompleted: 1 });
+      const second = engine.evaluate({ ...EMPTY_SNAPSHOT, challengesCompleted: 1 });
+      expect(second).not.toContain('first_win');
+    });
+
+    it('seedUnlocked prevents previously-unlocked achievements from firing', () => {
+      engine.seedUnlocked(['first_win']);
+      const result = engine.evaluate({ ...EMPTY_SNAPSHOT, challengesCompleted: 1 });
+      expect(result).not.toContain('first_win');
     });
   });
 

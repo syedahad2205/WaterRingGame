@@ -26,6 +26,8 @@ import type { PhysicsSharedBridge } from '../../../types/game';
 import WaterRenderer from './WaterRenderer';
 import PegRenderer, { type PegData } from './PegRenderer';
 import RingRenderer, { type RingData } from './RingRenderer';
+import { useEquippedCosmetics } from '../../../hooks/useEquippedCosmetics';
+import type { RingSkinConfig } from '../../../constants/cosmeticCatalog';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -42,6 +44,13 @@ export interface GameRendererProps {
    */
   isActive: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Distance threshold (px) at which a ring is considered "near" its target peg. */
+const NEAR_PEG_DISTANCE = 100;
 
 // ---------------------------------------------------------------------------
 // GameRenderer component
@@ -61,6 +70,9 @@ export default function GameRenderer({
   height,
   isActive,
 }: GameRendererProps): React.JSX.Element {
+  // ── Equipped cosmetics ───────────────────────────────────────────────────
+  const cosmetics = useEquippedCosmetics();
+
   // ── Derive RingData[] from bridge ────────────────────────────────────────
   //
   // useDerivedValue runs on the UI thread; the result is a SharedValue that
@@ -73,17 +85,36 @@ export default function GameRenderer({
       const pos = positions.find((p) => p.id === ring.id);
       const isSettled = pegStates.some((p) => p.settledRingId === ring.id);
 
+      // Compute isNearPeg: true when the ring is within NEAR_PEG_DISTANCE of
+      // any peg that accepts this ring's colour and isn't already occupied.
+      const ringX = pos?.x ?? ring.initialPosition.x;
+      const ringY = pos?.y ?? ring.initialPosition.y;
+      let isNearPeg = false;
+      if (!isSettled) {
+        for (const peg of config.pegs) {
+          if (peg.acceptedColorId !== ring.colorId) continue;
+          const pegOccupied = pegStates.some((ps) => ps.id === peg.id && ps.settledRingId != null);
+          if (pegOccupied) continue;
+          const dx = ringX - peg.position.x;
+          const dy = ringY - peg.position.y;
+          if (dx * dx + dy * dy <= NEAR_PEG_DISTANCE * NEAR_PEG_DISTANCE) {
+            isNearPeg = true;
+            break;
+          }
+        }
+      }
+
       return {
         id: ring.id,
-        x: pos?.x ?? ring.initialPosition.x,
-        y: pos?.y ?? ring.initialPosition.y,
+        x: ringX,
+        y: ringY,
         angle: pos?.angle ?? 0,
         outerRadius: ring.outerRadius,
         innerRadius: ring.innerRadius,
         colorId: ring.colorId,
         skinId: ring.skinId,
         isSettled,
-        isNearPeg: false,
+        isNearPeg,
       } satisfies RingData;
     });
   });
@@ -129,7 +160,7 @@ export default function GameRenderer({
           width={width}
           height={height}
           waterSurfaceY={config.arena.waterSurfaceY}
-          waterColor="#2196F3"
+          waterColor={cosmetics.waterStyle.surface}
           themeId={config.arena.themeId}
           isActive={isActive}
         />
@@ -137,12 +168,12 @@ export default function GameRenderer({
 
       {/* Layer 2 — Pegs (above water) */}
       <View style={StyleSheet.absoluteFill}>
-        <PegRenderer pegs={pegs} t={elapsedT} />
+        <PegRenderer pegs={pegs} t={elapsedT} pegSkin={cosmetics.pegSkin} />
       </View>
 
       {/* Layer 3 — Rings (above pegs) */}
       <View style={StyleSheet.absoluteFill}>
-        <RingRenderer rings={rings} t={elapsedT} />
+        <RingRenderer rings={rings} t={elapsedT} ringSkin={cosmetics.ringSkin} />
       </View>
     </View>
   );

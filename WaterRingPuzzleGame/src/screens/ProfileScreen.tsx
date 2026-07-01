@@ -1,50 +1,60 @@
 /**
  * ProfileScreen.tsx
  *
- * Player profile hub: avatar + frame + banner, username, rank badge with
+ * Player profile hub: avatar + frame, username, rank badge with
  * progress bar, 3 pinned achievements, and completion score percentage.
  *
  * Requirements: 35.4
  * Task: 8.4.3
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
-  SafeAreaView,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
+import { useNavigation } from '@react-navigation/native';
 import { usePlayerStore } from '../store/slices/playerSlice';
 import { useEconomyStore } from '../store/slices/economySlice';
+import { DS } from '../constants/designSystem';
+import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { GlassCard } from '../components/ui/GlassCard';
+import { ProgressBar } from '../components/ui/ProgressBar';
+import { Badge } from '../components/ui/Badge';
+import { StatCard } from '../components/ui/StatCard';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { Icon } from '../components/icons/GameIcons';
+import type { IconName } from '../components/icons/GameIcons';
 
 // ---------------------------------------------------------------------------
 // Rank config
 // ---------------------------------------------------------------------------
 
-const RANK_ICONS: Record<string, string> = {
-  Ripple: '💧', Current: '🌀', Wave: '🌊', Tide: '🌙',
-  Surge: '⚡', Tempest: '🌪️', Maelstrom: '🌀', Leviathan: '🐉',
-};
-
 const RANK_COLOURS: Record<string, string> = {
-  Ripple: '#90A4AE', Current: '#42A5F5', Wave: '#26C6DA',
-  Tide: '#AB47BC', Surge: '#FFA726', Tempest: '#EF5350',
-  Maelstrom: '#EC407A', Leviathan: '#FFD740',
+  Ripple: DS.colors.text.secondary, Current: DS.colors.primary, Wave: DS.colors.secondary,
+  Tide: DS.colors.rings.lavender, Surge: DS.colors.warning, Tempest: DS.colors.error,
+  Maelstrom: DS.colors.rings.coral, Leviathan: DS.colors.accent,
 };
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
+const RANK_THRESHOLDS: [string, number][] = [
+  ['Ripple', 0], ['Current', 50], ['Wave', 150], ['Tide', 300],
+  ['Surge', 500], ['Tempest', 800], ['Maelstrom', 1200], ['Leviathan', 2000],
+];
 
-function StatCard({ label, value }: { label: string; value: string | number }): React.JSX.Element {
-  return (
-    <View style={styles.statCard} accessible={true} accessibilityLabel={`${label}: ${value}`}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
+function computeRankProgress(level: number): number {
+  for (let i = RANK_THRESHOLDS.length - 1; i >= 0; i--) {
+    if (level >= RANK_THRESHOLDS[i][1]) {
+      if (i === RANK_THRESHOLDS.length - 1) return 100; // Max rank
+      const currentMin = RANK_THRESHOLDS[i][1];
+      const nextMin = RANK_THRESHOLDS[i + 1][1];
+      return Math.round(((level - currentMin) / (nextMin - currentMin)) * 100);
+    }
+  }
+  return 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,116 +69,141 @@ function StatCard({ label, value }: { label: string; value: string | number }): 
  */
 // eslint-disable-next-line max-lines-per-function
 export default function ProfileScreen(): React.JSX.Element {
+  const navigation = useNavigation();
   const player = usePlayerStore();
   const coinBalance = useEconomyStore((state) => state.coinBalance);
 
   const rank = (player.rank as string) ?? 'Ripple';
-  const rankIcon = RANK_ICONS[rank] ?? '💧';
-  const rankColor = RANK_COLOURS[rank] ?? '#90A4AE';
+  const rankColor = RANK_COLOURS[rank] ?? DS.colors.text.secondary;
 
-  // Mock progress to next rank (replace with LevelSystem calculation)
-  const rankProgressPercent = 65;
+  const rankProgressPercent = computeRankProgress(player.level);
 
-  // Mock pinned achievements
+  const contentOpacity = useSharedValue(0);
+  const contentTranslateY = useSharedValue(20);
+
+  useEffect(() => {
+    contentOpacity.value = withTiming(1, { duration: 400 });
+    contentTranslateY.value = withDelay(100, withTiming(0, { duration: 350, easing: Easing.out(Easing.ease) }));
+  }, []);
+
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
+  }));
+
+  // Pinned achievements — static fallback until a dedicated achievements store is available
   const pinnedAchievements = [
-    { id: 'first_win', name: 'First Win', icon: '🏅', description: 'Complete your first challenge' },
-    { id: 'no_continue', name: 'Pure Run', icon: '💎', description: 'Win without using a continue' },
-    { id: 'streak_5', name: 'On a Roll', icon: '🔥', description: 'Win 5 challenges in a row' },
+    { id: 'first_win', name: 'First Win', iconName: 'trophy' as IconName, description: 'Complete your first challenge' },
+    { id: 'no_continue', name: 'Pure Run', iconName: 'gem' as IconName, description: 'Win without using a continue' },
+    { id: 'streak_5', name: 'On a Roll', iconName: 'fire' as IconName, description: 'Win 5 challenges in a row' },
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Animated.View style={contentStyle}>
 
-        {/* Banner background */}
-        <View style={styles.banner}>
-          <View style={styles.bannerBg} />
-          <Text style={styles.bannerLabel} accessible={false}>🌊🌊🌊</Text>
+        {/* Header with back button */}
+        <View style={styles.header}>
+          <Pressable onPress={() => navigation.goBack()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
+            <Icon name="back" size={28} color={DS.colors.text.primary} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <View style={{ width: 28 }} />
         </View>
 
         {/* Avatar + frame */}
         <View style={styles.avatarSection}>
-          <View style={[styles.avatarFrame, { borderColor: rankColor }]}>
+          <GlassCard variant="strong" borderRadius={DS.radius.pill} noAnimation style={styles.avatarFrame}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarEmoji} accessible={false}>
-                {player.avatarUrl ?? '🧑'}
-              </Text>
+              <Icon name="profile" size={40} />
             </View>
-          </View>
+          </GlassCard>
         </View>
 
-        {/* Name + username */}
+        {/* Name + username + level badge */}
         <View style={styles.nameSection}>
-          <Text
-            style={styles.displayName}
-            accessibilityRole="header"
-            accessible={true}
-            accessibilityLabel={`Player: ${player.displayName || 'Anonymous'}`}
-          >
-            {player.displayName || 'Anonymous'}
-          </Text>
+          <View style={styles.nameRow}>
+            <Text
+              style={styles.displayName}
+              accessibilityRole="header"
+              accessible={true}
+              accessibilityLabel={`Player: ${player.displayName || 'Anonymous'}`}
+            >
+              {player.displayName || 'Anonymous'}
+            </Text>
+            <Badge variant="rank" value={`Lv.${player.level}`} />
+          </View>
           {player.username ? (
             <Text style={styles.username} accessible={false}>@{player.username}</Text>
           ) : null}
         </View>
 
         {/* Rank badge + progress */}
-        <View
-          style={[styles.rankBadge, { borderColor: rankColor }]}
-          accessible={true}
+        <GlassCard
+          variant="medium"
+          style={styles.rankCard}
           accessibilityLabel={`Rank: ${rank}. Progress to next rank: ${rankProgressPercent}%`}
         >
-          <Text style={styles.rankIcon} accessible={false}>{rankIcon}</Text>
-          <View style={styles.rankInfo}>
-            <Text style={[styles.rankName, { color: rankColor }]}>{rank}</Text>
-            <View style={styles.rankProgressBar}>
-              <View style={[styles.rankProgressFill, { width: `${rankProgressPercent}%`, backgroundColor: rankColor }]} />
+          <View style={styles.rankRow}>
+            <Icon name="crown" size={28} />
+            <View style={styles.rankInfo}>
+              <Text style={[styles.rankName, { color: rankColor }]}>{rank}</Text>
+              <ProgressBar
+                value={rankProgressPercent / 100}
+                color={rankColor}
+                size="sm"
+                showLabel
+                label={`${rankProgressPercent}%`}
+              />
             </View>
           </View>
-          <Text style={styles.rankPercent}>{rankProgressPercent}%</Text>
-        </View>
+        </GlassCard>
 
         {/* Stats row */}
         <View style={styles.statsRow}>
-          <StatCard label="Level" value={player.level ?? 1} />
-          <StatCard label="Coins" value={(coinBalance ?? 0).toLocaleString()} />
-          <StatCard label="XP" value={(player.xp ?? 0).toLocaleString()} />
-          <StatCard label="Prestige" value={player.prestige ?? 0} />
+          <StatCard icon="star" iconColor={DS.colors.accent} value={player.level ?? 1} label="Level" />
+          <StatCard icon="coin" iconColor={DS.colors.accent} value={coinBalance ?? 0} label="Coins" />
+          <StatCard icon="bolt" iconColor={DS.colors.secondary} value={player.xp ?? 0} label="XP" />
+          <StatCard icon="crown" iconColor={DS.colors.rings.lavender} value={player.prestige ?? 0} label="Prestige" />
         </View>
 
         {/* Completion score */}
-        <View style={styles.completionCard}>
+        <GlassCard variant="medium" style={styles.completionCard}>
           <Text style={styles.completionLabel}>Completion Score</Text>
           <Text style={styles.completionValue}>{player.completionScorePercent ?? 0}%</Text>
-          <View style={styles.completionBar}>
-            <View
-              style={[styles.completionFill, { width: `${player.completionScorePercent ?? 0}%` }]}
-            />
-          </View>
-        </View>
+          <ProgressBar
+            value={(player.completionScorePercent ?? 0) / 100}
+            color={DS.colors.primary}
+            size="md"
+          />
+        </GlassCard>
 
         {/* Pinned achievements */}
-        <Text style={styles.sectionTitle} accessibilityRole="header">Pinned Achievements</Text>
+        <SectionHeader title="Pinned Achievements" />
         <View style={styles.achievementsList}>
           {pinnedAchievements.map((ach) => (
-            <View
+            <GlassCard
               key={ach.id}
+              variant="subtle"
               style={styles.achievementRow}
-              accessible={true}
               accessibilityLabel={`${ach.name}: ${ach.description}`}
             >
-              <Text style={styles.achievementIcon} accessible={false}>{ach.icon}</Text>
-              <View style={styles.achievementInfo}>
-                <Text style={styles.achievementName}>{ach.name}</Text>
-                <Text style={styles.achievementDesc}>{ach.description}</Text>
+              <View style={styles.achievementContent}>
+                <Icon name={ach.iconName} size={28} color={DS.colors.accent} />
+                <View style={styles.achievementInfo}>
+                  <Text style={styles.achievementName}>{ach.name}</Text>
+                  <Text style={styles.achievementDesc}>{ach.description}</Text>
+                </View>
               </View>
-            </View>
+            </GlassCard>
           ))}
         </View>
 
-        <View style={{ height: 32 }} />
+        <View style={{ height: DS.spacing.xxxl }} />
+        </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
@@ -177,39 +212,122 @@ export default function ProfileScreen(): React.JSX.Element {
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#070f1e' },
-  scrollContent: { paddingBottom: 32 },
-  banner: { height: 120, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  bannerBg: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(13, 53, 98, 0.9)' },
-  bannerLabel: { fontSize: 48, opacity: 0.25 },
-  avatarSection: { alignItems: 'center', marginTop: -44 },
-  avatarFrame: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, padding: 3, backgroundColor: '#070f1e' },
-  avatar: { flex: 1, borderRadius: 40, backgroundColor: 'rgba(79,195,247,0.15)', alignItems: 'center', justifyContent: 'center' },
-  avatarEmoji: { fontSize: 36 },
-  nameSection: { alignItems: 'center', marginTop: 10, gap: 2 },
-  displayName: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  username: { color: 'rgba(255,255,255,0.45)', fontSize: 14 },
-  rankBadge: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginTop: 16, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 14, borderWidth: 1.5, gap: 12 },
-  rankIcon: { fontSize: 28 },
-  rankInfo: { flex: 1, gap: 4 },
-  rankName: { fontSize: 16, fontWeight: '700' },
-  rankProgressBar: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
-  rankProgressFill: { height: '100%', borderRadius: 3 },
-  rankPercent: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
-  statsRow: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 16, gap: 10 },
-  statCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', gap: 3 },
-  statValue: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  statLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  completionCard: { marginHorizontal: 20, marginTop: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', gap: 8 },
-  completionLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '600' },
-  completionValue: { color: '#4FC3F7', fontSize: 24, fontWeight: '800' },
-  completionBar: { height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
-  completionFill: { height: '100%', borderRadius: 4, backgroundColor: '#4FC3F7' },
-  sectionTitle: { color: '#fff', fontSize: 17, fontWeight: '700', marginHorizontal: 20, marginTop: 22, marginBottom: 10 },
-  achievementsList: { marginHorizontal: 20, gap: 8 },
-  achievementRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: 'rgba(255,215,64,0.15)', gap: 14 },
-  achievementIcon: { fontSize: 28 },
-  achievementInfo: { flex: 1, gap: 2 },
-  achievementName: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  achievementDesc: { color: 'rgba(255,255,255,0.45)', fontSize: 12 },
+  scrollContent: {
+    paddingBottom: DS.spacing.xxxl,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: DS.spacing.xl,
+    paddingVertical: DS.spacing.md,
+  },
+  headerTitle: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.body,
+    fontWeight: DS.typography.weight.bold,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginTop: DS.spacing.sm,
+  },
+  avatarFrame: {
+    width: 96,
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: DS.radius.pill,
+    backgroundColor: 'rgba(79,195,247,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nameSection: {
+    alignItems: 'center',
+    marginTop: DS.spacing.md,
+    gap: DS.spacing.xxxs,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.sm,
+  },
+  displayName: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.title3,
+    fontWeight: DS.typography.weight.heavy,
+  },
+  username: {
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.subhead,
+  },
+  rankCard: {
+    marginHorizontal: DS.spacing.xl,
+    marginTop: DS.spacing.lg,
+    padding: DS.spacing.lg,
+  },
+  rankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.md,
+  },
+  rankInfo: {
+    flex: 1,
+    gap: DS.spacing.xxs,
+  },
+  rankName: {
+    fontSize: DS.typography.size.callout,
+    fontWeight: DS.typography.weight.bold,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: DS.spacing.lg,
+    marginTop: DS.spacing.lg,
+    gap: DS.spacing.sm,
+  },
+  completionCard: {
+    marginHorizontal: DS.spacing.xl,
+    marginTop: DS.spacing.md,
+    padding: DS.spacing.lg,
+    gap: DS.spacing.sm,
+  },
+  completionLabel: {
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.footnote,
+    fontWeight: DS.typography.weight.semibold,
+  },
+  completionValue: {
+    color: DS.colors.primary,
+    fontSize: DS.typography.size.title2,
+    fontWeight: DS.typography.weight.heavy,
+  },
+  achievementsList: {
+    marginHorizontal: DS.spacing.xl,
+    gap: DS.spacing.sm,
+  },
+  achievementRow: {
+    padding: DS.spacing.md,
+  },
+  achievementContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.md,
+  },
+  achievementInfo: {
+    flex: 1,
+    gap: DS.spacing.xxxs,
+  },
+  achievementName: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.subhead,
+    fontWeight: DS.typography.weight.bold,
+  },
+  achievementDesc: {
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.caption1,
+  },
 });

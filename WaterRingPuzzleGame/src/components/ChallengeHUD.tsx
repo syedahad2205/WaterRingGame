@@ -22,6 +22,8 @@ import {
   ViewStyle,
 } from 'react-native';
 import TimerArc from './TimerArc';
+import { DS } from '../constants/designSystem';
+import { Icon, type IconName } from './icons/GameIcons';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,20 +50,20 @@ export interface ChallengeHUDProps {
 // Template icon mapping
 // ---------------------------------------------------------------------------
 
-/** Maps template IDs to simple emoji icons. */
-const TEMPLATE_ICONS: Record<string, string> = {
-  standard: '💧',
-  precision: '🎯',
-  moving_pegs: '⚙️',
-  limited_presses: '👆',
-  strong_current: '🌊',
-  pressure_zones: '💨',
-  maze_navigation: '🗺️',
-  boss: '👑',
+/** Maps template IDs to Icon component names. */
+const TEMPLATE_ICONS: Record<string, IconName> = {
+  standard: 'water-drop',
+  precision: 'target',
+  moving_pegs: 'settings',
+  limited_presses: 'hint',
+  strong_current: 'water-drop',
+  pressure_zones: 'bolt',
+  maze_navigation: 'search',
+  boss: 'crown',
 };
 
-function getTemplateIcon(templateId: string): string {
-  return TEMPLATE_ICONS[templateId] ?? '💧';
+function getTemplateIconName(templateId: string): IconName {
+  return TEMPLATE_ICONS[templateId] ?? 'water-drop';
 }
 
 // ---------------------------------------------------------------------------
@@ -78,16 +80,12 @@ function StarBar({ starsEarned }: { starsEarned: 0 | 1 | 2 | 3 }): React.JSX.Ele
       accessibilityValue={{ min: 0, max: 3, now: starsEarned }}
     >
       {([1, 2, 3] as const).map((starIndex) => (
-        <Text
+        <Icon
           key={starIndex}
-          style={[
-            styles.starIcon,
-            starIndex <= starsEarned ? styles.starActive : styles.starInactive,
-          ]}
-          accessible={false}
-        >
-          ★
-        </Text>
+          name="star-filled"
+          size={18}
+          color={starIndex <= starsEarned ? DS.colors.accent : 'rgba(255,255,255,0.25)'}
+        />
       ))}
     </View>
   );
@@ -113,7 +111,7 @@ export default function ChallengeHUD({
   continueCount,
   style,
 }: ChallengeHUDProps): React.JSX.Element {
-  const templateIcon = getTemplateIcon(templateId);
+  const templateIconName = getTemplateIconName(templateId);
 
   return (
     <View
@@ -130,13 +128,12 @@ export default function ChallengeHUD({
         >
           #{challengeNumber}
         </Text>
-        <Text
-          style={styles.templateIcon}
-          accessible={true}
+        <Icon
+          name={templateIconName}
+          size={20}
+          color={DS.colors.secondary}
           accessibilityLabel={`Template: ${templateId.replace(/_/g, ' ')}`}
-        >
-          {templateIcon}
-        </Text>
+        />
       </View>
 
       {/* Centre: TimerArc */}
@@ -151,13 +148,14 @@ export default function ChallengeHUD({
       <View style={styles.rightSection}>
         <StarBar starsEarned={starsEarned} />
         {continueCount > 0 ? (
-          <Text
-            style={styles.continueCount}
+          <View
+            style={styles.continueRow}
             accessible={true}
             accessibilityLabel={`${continueCount} continue${continueCount !== 1 ? 's' : ''} used`}
           >
-            +{continueCount}🔄
-          </Text>
+            <Text style={styles.continueCount}>+{continueCount}</Text>
+            <Icon name="restart" size={14} color={DS.colors.info} />
+          </View>
         ) : null}
       </View>
     </View>
@@ -173,26 +171,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: DS.spacing.lg,
+    paddingVertical: DS.spacing.sm,
     backgroundColor: 'rgba(10, 30, 55, 0.82)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(79,195,247,0.18)',
+    borderBottomColor: DS.colors.glass.border,
   },
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
     minWidth: 72,
-    gap: 6,
+    gap: DS.spacing.xs,
   },
   challengeNumber: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.callout,
+    fontWeight: DS.typography.weight.bold,
     letterSpacing: -0.5,
-  },
-  templateIcon: {
-    fontSize: 18,
   },
   timerArc: {
     alignSelf: 'center',
@@ -200,24 +195,20 @@ const styles = StyleSheet.create({
   rightSection: {
     alignItems: 'flex-end',
     minWidth: 72,
-    gap: 4,
+    gap: DS.spacing.xxs,
   },
   starBar: {
     flexDirection: 'row',
-    gap: 2,
+    gap: DS.spacing.xxxs,
   },
-  starIcon: {
-    fontSize: 18,
-  },
-  starActive: {
-    color: '#FFD740',
-  },
-  starInactive: {
-    color: 'rgba(255,255,255,0.25)',
+  continueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.xxxs,
   },
   continueCount: {
-    color: '#81D4FA',
-    fontSize: 12,
-    fontWeight: '600',
+    color: DS.colors.info,
+    fontSize: DS.typography.size.caption1,
+    fontWeight: DS.typography.weight.semibold,
   },
 });

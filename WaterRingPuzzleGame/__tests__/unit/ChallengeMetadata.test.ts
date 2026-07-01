@@ -140,9 +140,8 @@ describe('ChallengeScorer — scoreChallenge', () => {
 
   it('meetsThreshold is false when solvability is 0.0', () => {
     const result = scoreChallenge(mockConfig, zeroSolvability);
-    // With solvability=0, overall = 0*0.30 + fun*0.25 + fairness*0.20 + 0.8*0.15 + 0.8*0.10
-    // Max possible without solvability: 0 + 0.25 + 0.20 + 0.12 + 0.08 = 0.65 (edge case)
-    // Since fun < 1.0 for a 1-ring config, overall < 0.65
+    // With solvability=0, overall = 0*0.30 + fun*0.25 + fairness*0.20 + variety*0.15 + pacing*0.10
+    // Without solvability contribution, overall should fall below threshold.
     expect(result.solvability).toBe(0.0);
     expect(result.overall).toBeLessThan(QUALITY_THRESHOLD);
     expect(result.meetsThreshold).toBe(false);
@@ -159,14 +158,16 @@ describe('ChallengeScorer — scoreChallenge', () => {
     expect(result.overall).toBeCloseTo(expected, 5);
   });
 
-  it('variety score is 0.8 (placeholder constant)', () => {
+  it('variety score is computed from challenge diversity (not a placeholder)', () => {
     const result = scoreChallenge(mockConfig, perfectSolvability);
-    expect(result.variety).toBe(0.8);
+    expect(result.variety).toBeGreaterThanOrEqual(0.0);
+    expect(result.variety).toBeLessThanOrEqual(1.0);
   });
 
-  it('pacing score is 0.8 (placeholder constant)', () => {
+  it('pacing score is computed from timer and ring balance (not a placeholder)', () => {
     const result = scoreChallenge(mockConfig, perfectSolvability);
-    expect(result.pacing).toBe(0.8);
+    expect(result.pacing).toBeGreaterThanOrEqual(0.0);
+    expect(result.pacing).toBeLessThanOrEqual(1.0);
   });
 
   it('solvability score matches solver result directly', () => {

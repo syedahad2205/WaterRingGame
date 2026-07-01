@@ -331,7 +331,7 @@ export class HapticManager {
       return unsubscribe;
     } catch (err) {
       // Graceful degradation — settings store unavailable (e.g. test environment)
-      console.warn('[HapticManager] initialize: could not connect to settingsSlice (non-fatal):', err);
+      if (__DEV__) console.warn('[HapticManager] initialize: could not connect to settingsSlice (non-fatal):', err);
       const noop = (): void => { /* intentional no-op */ };
       return noop;
     }

@@ -13,6 +13,14 @@
 import Matter from 'matter-js';
 
 import type { ChallengeConfig, PegState } from '../../../types/challenge';
+import { createRingBody } from './RingBody';
+import {
+  applyWaterForces as applyWaterForcesImpl,
+  type InputState as WaterInputState,
+} from './WaterSimulation';
+import { triggerHaptic } from '../../../constants/hapticPatterns';
+import { SETTLE_VELOCITY_THRESHOLD } from '../../../constants/physics';
+import { audioEngine } from '../../audio/AudioEngine';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -75,11 +83,7 @@ export const PhysicsConstants = {
   WALL_THICKNESS: 50,
 } as const;
 
-/**
- * Maximum ring speed (px/tick) below which a ring is considered settled.
- * Requirement 10.6.
- */
-export const SETTLE_VELOCITY_THRESHOLD = 0.5;
+// SETTLE_VELOCITY_THRESHOLD is imported from constants/physics.ts (Requirement 10.6).
 
 /**
  * Maximum ring speed (px/tick) below which a ring is considered stuck.
@@ -230,6 +234,11 @@ function markRingSettled(
   const ringPlugin = ring.plugin as RingPlugin;
   const pegPlugin = peg.plugin as PegPlugin;
 
+  // Idempotency guard — prevent double-settling
+  if (ringPlugin.settledOnPegId !== null || pegPlugin.settledRingId !== null) {
+    return;
+  }
+
   // Freeze motion
   Matter.Body.setVelocity(ring, { x: 0, y: 0 });
   Matter.Body.setAngularVelocity(ring, 0);
@@ -260,10 +269,14 @@ function extractRingPegPair(
   pair: Matter.Pair,
 ): { ring: Matter.Body; peg: Matter.Body } | null {
   const { bodyA, bodyB } = pair;
-  if (bodyA.label === 'ring' && bodyB.label === 'peg') {
+  const aIsRing = bodyA.label.startsWith('ring');
+  const bIsRing = bodyB.label.startsWith('ring');
+  const aIsPeg = bodyA.label.startsWith('peg');
+  const bIsPeg = bodyB.label.startsWith('peg');
+  if (aIsRing && bIsPeg) {
     return { ring: bodyA, peg: bodyB };
   }
-  if (bodyA.label === 'peg' && bodyB.label === 'ring') {
+  if (aIsPeg && bIsRing) {
     return { ring: bodyB, peg: bodyA };
   }
   return null;
@@ -292,6 +305,34 @@ export function handleCollisionStart(
 
   // Matter.js types vary by version; use a loose pair type
   for (const pair of event.pairs) {
+    const { bodyA, bodyB } = pair;
+    const aIsRing = bodyA.label.startsWith('ring');
+    const bIsRing = bodyB.label.startsWith('ring');
+
+    // Ring-ring collision: light haptic + SFX
+    if (aIsRing && bIsRing) {
+      triggerHaptic('ringCollision');
+      try {
+        audioEngine.getSFXManager().play('ring_collision');
+      } catch {
+        // SFX failure is non-fatal
+      }
+      continue;
+    }
+
+    // Ring-wall collision: wall hit haptic + SFX
+    const aIsWall = bodyA.label === 'wall';
+    const bIsWall = bodyB.label === 'wall';
+    if ((aIsRing && bIsWall) || (bIsRing && aIsWall)) {
+      triggerHaptic('ringWallHit');
+      try {
+        audioEngine.getSFXManager().play('ring_wall_collision');
+      } catch {
+        // SFX failure is non-fatal
+      }
+      continue;
+    }
+
     const result = extractRingPegPair(pair);
     if (!result) {
       continue;
@@ -303,6 +344,11 @@ export function handleCollisionStart(
 
     // Skip if ring is already settled
     if (ringPlugin.settledOnPegId !== null) {
+      continue;
+    }
+
+    // Skip if peg already has a settled ring (prevents double-occupation)
+    if (pegPlugin.settledRingId !== null) {
       continue;
     }
 
@@ -343,6 +389,33 @@ export function handleCollisionStart(
 
     // All 5 conditions met — settle the ring
     markRingSettled(ring, peg);
+
+    // Trigger ring-landing haptic + SFX feedback
+    triggerHaptic('ringLandOnPeg');
+    try {
+      audioEngine.getSFXManager().play('ring_landed_peg');
+    } catch {
+      // SFX failure is non-fatal
+    }
+
+    // Perfect landing: ring centre is within 0.3× tipRadius of peg centre
+    if (d <= pegPlugin.tipRadius * 0.3) {
+      triggerHaptic('ringPerfectLand');
+      try {
+        audioEngine.getSFXManager().play('perfect_placement');
+      } catch {
+        // SFX failure is non-fatal
+      }
+    }
+
+    // Notify any registered ring-landed callback (progressive music hooks)
+    if (_onRingLandedCallback) {
+      try {
+        _onRingLandedCallback();
+      } catch {
+        // Callback failure is non-fatal
+      }
+    }
   }
 }
 
@@ -465,7 +538,7 @@ export function checkNaNPositions(
   }
 
   // Log non-fatal event (Crashlytics integration deferred to task 16.2.2)
-  console.error(
+  if (__DEV__) console.error(
     '[PhysicsWorld] NaN/Infinity detected in ring positions — attempting recovery.',
   );
 
@@ -513,11 +586,20 @@ interface WorldState {
   ringBodies: Map<string, Matter.Body>;
   pegBodies: Map<string, Matter.Body>;
   templateId: string;
+  /** Full challenge config — needed for water force model. */
+  challengeConfig: ChallengeConfig;
   /** Most recent known-good serialized state (updated each step). */
   lastGoodState: SerializedPhysicsState | null;
 }
 
 let _world: WorldState | null = null;
+
+/**
+ * Optional callback fired whenever a ring successfully lands on a peg.
+ * Used by GameScreen to wire progressive music hooks (useAudio lifecycle)
+ * into the physics layer without requiring React hooks in PhysicsWorld.
+ */
+let _onRingLandedCallback: (() => void) | null = null;
 
 function assertInitialized(): WorldState {
   if (!_world) {
@@ -567,6 +649,7 @@ function initialize(config: ChallengeConfig): void {
     ringBodies,
     pegBodies,
     templateId: config.templateId,
+    challengeConfig: config,
     lastGoodState: null,
   };
 
@@ -585,27 +668,22 @@ function addRingBodies(
   ringBodies: Map<string, Matter.Body>,
 ): void {
   config.rings.forEach((ringCfg) => {
-    const body = Matter.Bodies.circle(
-      ringCfg.initialPosition.x,
-      ringCfg.initialPosition.y,
-      ringCfg.outerRadius,
-      {
-        mass: ringCfg.mass,
-        frictionAir: ringCfg.frictionAir,
-        restitution: ringCfg.restitution,
-        label: 'ring',
-        plugin: {
-          ringId: ringCfg.id,
-          colorId: ringCfg.colorId,
-          settledOnPegId: null,
-          lastBounceTime: 0,
-          stuckSinceTime: null,
-          nudgeCount: 0,
-          initialX: ringCfg.initialPosition.x,
-          initialY: ringCfg.initialPosition.y,
-        } satisfies RingPlugin,
-      },
-    );
+    // Use the RingBody factory to create a 24-vertex polygon with correct
+    // collision filters and per-tier physics properties (Req 10.3, 23.1-23.3).
+    const body = createRingBody(ringCfg, ringCfg.initialPosition);
+
+    // Augment the RingBodyPlugin with the additional fields PhysicsWorld
+    // needs for landing detection (10.6), stuck detection (10.7), and
+    // NaN recovery (10.8).
+    const existingPlugin = body.plugin as Record<string, unknown>;
+    Object.assign(existingPlugin, {
+      lastBounceTime: 0,
+      stuckSinceTime: null,
+      nudgeCount: 0,
+      initialX: ringCfg.initialPosition.x,
+      initialY: ringCfg.initialPosition.y,
+    });
+
     Matter.Composite.add(engine.world, body);
     ringBodies.set(ringCfg.id, body);
   });
@@ -648,7 +726,11 @@ function addPegBodies(
  * Requirement 10.1, 10.7, 10.8
  */
 function step(dt: number): void {
-  const world = assertInitialized();
+  // Bail silently if the world was destroyed (e.g. handleWin called stop()
+  // while the GameLoop tick is still executing). This prevents a crash from
+  // assertInitialized() throwing after destroy().
+  if (!_world) return;
+  const world = _world;
 
   // NaN guard before update (Requirement 10.8)
   checkNaNPositions(world.ringBodies, world.lastGoodState);
@@ -676,13 +758,33 @@ function _serializeNow(world: WorldState): SerializedPhysicsState {
 
 /**
  * Apply water forces to all non-settled ring bodies.
- * Placeholder implementation — full force model is task 4.2.x.
  *
- * Requirement 10.1
+ * Delegates to WaterSimulation.applyWaterForces which implements the
+ * four-layer water force model (Req 22.1-22.7): directional button force,
+ * background current, buoyancy, turbulence, and depth-scaled drag.
+ *
+ * Requirement 10.1, 22.1
  */
-function applyWaterForces(_input: InputState): void {
-  // Will be implemented in task 4.2.x (water force model).
-  // The `beforeUpdate` event handler will be registered here.
+function applyWaterForces(input: InputState): void {
+  if (!_world) return;
+  const world = _world;
+  const { arena } = world.challengeConfig;
+
+  // Map the public InputState to the full WaterInputState expected by
+  // WaterSimulation, providing arena dimensions and defaulting optional
+  // turbulence fields when they are absent.
+  const waterInput: WaterInputState = {
+    leftHeld: input.leftHeld,
+    rightHeld: input.rightHeld,
+    leftIntensity: input.leftIntensity,
+    rightIntensity: input.rightIntensity,
+    turbulenceActive: (input as Partial<WaterInputState>).turbulenceActive ?? false,
+    turbulenceSeed: (input as Partial<WaterInputState>).turbulenceSeed ?? 0,
+    arenaWidth: arena.width,
+    arenaHeight: arena.height,
+  };
+
+  applyWaterForcesImpl(world.engine.world, waterInput, world.challengeConfig);
 }
 
 /**
@@ -691,9 +793,9 @@ function applyWaterForces(_input: InputState): void {
  * Requirement 10.1
  */
 function getRingStates(): RingState[] {
-  const { ringBodies } = assertInitialized();
+  if (!_world) return [];
   const states: RingState[] = [];
-  ringBodies.forEach((body) => {
+  _world.ringBodies.forEach((body) => {
     states.push(extractRingState(body));
   });
   return states;
@@ -705,9 +807,9 @@ function getRingStates(): RingState[] {
  * Requirement 10.1
  */
 function getPegStates(): PegState[] {
-  const { pegBodies } = assertInitialized();
+  if (!_world) return [];
   const states: PegState[] = [];
-  pegBodies.forEach((body) => {
+  _world.pegBodies.forEach((body) => {
     const plugin = body.plugin as PegPlugin;
     states.push({ id: plugin.pegId, settledRingId: plugin.settledRingId });
   });
@@ -752,6 +854,19 @@ function restoreState(state: SerializedPhysicsState): void {
 }
 
 /**
+ * Register a callback to be fired each time a ring successfully lands on a peg.
+ *
+ * This allows React components (e.g. GameScreen) to wire progressive music
+ * lifecycle hooks (onFirstRingLanded, etc.) into the physics layer without
+ * requiring React hooks inside PhysicsWorld.
+ *
+ * Pass `null` to unregister.
+ */
+function setOnRingLandedCallback(cb: (() => void) | null): void {
+  _onRingLandedCallback = cb;
+}
+
+/**
  * Clear all bodies and tear down the engine.
  * Must be called when a challenge ends or the component unmounts.
  *
@@ -761,9 +876,12 @@ function destroy(): void {
   if (!_world) {
     return;
   }
+  // Remove collision event listener before clearing engine (prevents listener stacking)
+  Matter.Events.off(_world.engine, 'collisionStart');
   Matter.World.clear(_world.engine.world, false);
   Matter.Engine.clear(_world.engine);
   _world = null;
+  _onRingLandedCallback = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -779,4 +897,5 @@ export const PhysicsWorld = {
   serializeState,
   restoreState,
   destroy,
+  setOnRingLandedCallback,
 } as const;

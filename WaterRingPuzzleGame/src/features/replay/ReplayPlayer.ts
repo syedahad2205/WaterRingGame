@@ -61,7 +61,7 @@ export class ReplayPlayer {
 
   play(): void {
     if (!this.replay) {
-      console.warn('[ReplayPlayer] No replay loaded.');
+      if (__DEV__) console.warn('[ReplayPlayer] No replay loaded.');
       return;
     }
     if (this.state === 'ended') {

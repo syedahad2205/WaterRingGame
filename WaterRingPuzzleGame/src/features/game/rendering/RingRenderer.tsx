@@ -13,8 +13,7 @@
  * Requirements: 38.2, 4.3
  */
 
-import React from 'react';
-import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
+import React, { useMemo } from 'react';
 import {
   Canvas,
   Circle,
@@ -23,6 +22,10 @@ import {
   BlurMask,
   Group,
 } from '@shopify/react-native-skia';
+
+import { RING_COLOR_MAP, DEFAULT_RING_COLOR } from '../../../constants/ui';
+import { DS } from '../../../constants/designSystem';
+import type { RingSkinConfig } from '../../../constants/cosmeticCatalog';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,34 +49,21 @@ export interface RingRendererProps {
   rings: RingData[];
   /** Elapsed time in seconds, used for animations. */
   t: number;
+  /** Optional equipped ring skin config — overrides default ring colors. */
+  ringSkin?: RingSkinConfig | null;
 }
 
 // ---------------------------------------------------------------------------
-// Color map (design.md color palette)
+// Visual constants
 // ---------------------------------------------------------------------------
 
-const RING_COLOR_MAP: Record<string, string> = {
-  red: '#F44336',
-  blue: '#2196F3',
-  green: '#4CAF50',
-  yellow: '#FFEB3B',
-  purple: '#9C27B0',
-  orange: '#FF9800',
-};
-
-const DEFAULT_RING_COLOR = '#2196F3';
-
 /** Near-peg glow color (distinct from the settled glow). */
-const NEAR_PEG_GLOW_COLOR = '#FFD700'; // golden yellow
-const SETTLED_GLOW_COLOR = '#FFFFFF'; // white pulse
+const NEAR_PEG_GLOW_COLOR = DS.colors.accent; // golden yellow
+const SETTLED_GLOW_COLOR = '#FFFFFF'; // white pulse (pure white needed for Skia blend)
 
 // ---------------------------------------------------------------------------
 // Animation helpers
 // ---------------------------------------------------------------------------
-
-// Spring config for ring landing animation (used by drag-drop physics integration)
-const LANDING_SPRING_STIFFNESS = 300;
-const LANDING_SPRING_DAMPING = 25;
 
 const GLOW_FREQUENCY = 1.5; // Hz
 
@@ -92,6 +82,27 @@ function pulseValue(t: number, min: number, max: number): number {
 /** Extra space around the ring for shadows and glows. */
 const CANVAS_PADDING = 24;
 
+// Module-level paints that never change between renders.
+
+const SHADOW_PAINT = Skia.Paint();
+SHADOW_PAINT.setColor(Skia.Color('rgba(0,0,0,0.25)'));
+SHADOW_PAINT.setAntiAlias(true);
+
+const SETTLED_GLOW_PAINT = Skia.Paint();
+SETTLED_GLOW_PAINT.setColor(Skia.Color(SETTLED_GLOW_COLOR));
+SETTLED_GLOW_PAINT.setAntiAlias(true);
+
+const NEAR_PEG_GLOW_PAINT = Skia.Paint();
+NEAR_PEG_GLOW_PAINT.setColor(Skia.Color(NEAR_PEG_GLOW_COLOR));
+NEAR_PEG_GLOW_PAINT.setAntiAlias(true);
+
+const HIGHLIGHT_PAINT = Skia.Paint();
+HIGHLIGHT_PAINT.setColor(Skia.Color('rgba(255,255,255,0.70)'));
+HIGHLIGHT_PAINT.setStyle(1); // PaintStyle.Stroke = 1
+HIGHLIGHT_PAINT.setStrokeWidth(3);
+HIGHLIGHT_PAINT.setAntiAlias(true);
+HIGHLIGHT_PAINT.setStrokeCap(1); // StrokeCap.Round = 1
+
 // ---------------------------------------------------------------------------
 // RingRenderer component
 // ---------------------------------------------------------------------------
@@ -100,7 +111,7 @@ const CANVAS_PADDING = 24;
  * RingRenderer renders all game rings onto a single Skia Canvas.
  * The canvas spans the full layout area; each ring is drawn at its (x, y) position.
  */
-export default function RingRenderer({ rings, t }: RingRendererProps): React.JSX.Element {
+export default function RingRenderer({ rings, t, ringSkin }: RingRendererProps): React.JSX.Element {
   if (rings.length === 0) {
     return <Canvas style={{ width: 0, height: 0 }} />;
   }
@@ -124,7 +135,7 @@ export default function RingRenderer({ rings, t }: RingRendererProps): React.JSX
       accessibilityLabel="Ring layer"
     >
       {rings.map((ring) => (
-        <RingSingle key={ring.id} ring={ring} t={t} />
+        <RingSingle key={ring.id} ring={ring} t={t} ringSkin={ringSkin} />
       ))}
     </Canvas>
   );
@@ -137,66 +148,61 @@ export default function RingRenderer({ rings, t }: RingRendererProps): React.JSX
 interface RingSingleProps {
   ring: RingData;
   t: number;
+  ringSkin?: RingSkinConfig | null;
 }
 
 // eslint-disable-next-line max-lines-per-function
-function RingSingle({ ring, t }: RingSingleProps): React.JSX.Element {
+function RingSingle({ ring, t, ringSkin }: RingSingleProps): React.JSX.Element {
   const { x, y, outerRadius, innerRadius, colorId, isSettled, isNearPeg } = ring;
 
-  const ringColor = RING_COLOR_MAP[colorId] ?? DEFAULT_RING_COLOR;
+  // ── 1. Torus path (memoized — only changes when position/size changes) ────
+  const torusPath = useMemo(() => {
+    const p = Skia.Path.Make();
+    p.addCircle(x, y, outerRadius);
+    p.addCircle(x, y, innerRadius);
+    p.setFillType(1); // FillType.EvenOdd = 1
+    return p;
+  }, [x, y, outerRadius, innerRadius]);
 
-  // ── 1. Drop shadow ────────────────────────────────────────────────────────
-  // A soft dark ellipse positioned slightly below the ring centre.
-  const shadowPaint = Skia.Paint();
-  shadowPaint.setColor(Skia.Color('rgba(0,0,0,0.25)'));
-  shadowPaint.setAntiAlias(true);
+  // ── 2. Torus paint — uses equipped skin if available, else default ────────
+  const torusPaint = useMemo(() => {
+    let ringColor: string;
+    if (ringSkin?.colors[colorId]) {
+      ringColor = ringSkin.colors[colorId].fill;
+    } else {
+      ringColor = RING_COLOR_MAP[colorId] ?? DEFAULT_RING_COLOR;
+    }
+    const p = Skia.Paint();
+    p.setColor(Skia.Color(ringColor));
+    p.setAntiAlias(true);
+    return p;
+  }, [colorId, ringSkin]);
 
-  // ── 2. Settled glow (1.5 Hz pulse, opacity 0.3–0.8) ─────────────────────
+  // ── 3. Highlight arc path ─────────────────────────────────────────────────
+  const highlightPath = useMemo(() => {
+    const highlightRadius = (outerRadius + innerRadius) / 2;
+    const p = Skia.Path.Make();
+    p.addArc(
+      {
+        x: x - highlightRadius,
+        y: y - highlightRadius,
+        width: highlightRadius * 2,
+        height: highlightRadius * 2,
+      },
+      195, // startAngleDeg
+      30,  // sweepAngleDeg
+    );
+    return p;
+  }, [x, y, outerRadius, innerRadius]);
+
+  // ── 4. Glow opacity (changes every frame via pulse) ───────────────────────
   const settledGlowOpacity = isSettled ? pulseValue(t, 0.3, 0.8) : 0;
-  const settledGlowPaint = Skia.Paint();
-  settledGlowPaint.setColor(Skia.Color(SETTLED_GLOW_COLOR));
-  settledGlowPaint.setAlphaf(settledGlowOpacity);
-  settledGlowPaint.setAntiAlias(true);
-
-  // ── 3. Near-peg glow (1.5 Hz pulse, opacity 0.3–0.8) ────────────────────
   const nearPegGlowOpacity = isNearPeg && !isSettled ? pulseValue(t, 0.3, 0.8) : 0;
-  const nearPegGlowPaint = Skia.Paint();
-  nearPegGlowPaint.setColor(Skia.Color(NEAR_PEG_GLOW_COLOR));
-  nearPegGlowPaint.setAlphaf(nearPegGlowOpacity);
-  nearPegGlowPaint.setAntiAlias(true);
 
-  // ── 4. Torus (outer circle minus inner circle using even-odd fill) ────────
-  const torusPath = Skia.Path.Make();
-  torusPath.addCircle(x, y, outerRadius);
-  torusPath.addCircle(x, y, innerRadius);
-  torusPath.setFillType(1); // FillType.EvenOdd = 1
-
-  const torusPaint = Skia.Paint();
-  torusPaint.setColor(Skia.Color(ringColor));
-  torusPaint.setAntiAlias(true);
-
-  // ── 5. Highlight arc (upper-left, ~30°, 70% white, 3px stroke) ────────────
-  // The arc spans from ~210° to ~240° (upper-left quadrant) in standard math
-  // convention. In Skia, 0° is at 3 o'clock; sweep is clockwise.
-  // Upper-left is approximately 195° to 225° from 3 o'clock.
-  const highlightPath = Skia.Path.Make();
-  const highlightRadius = (outerRadius + innerRadius) / 2; // midpoint of torus
-  const startAngleDeg = 195;
-  const sweepAngleDeg = 30;
-  const highlightRect = {
-    x: x - highlightRadius,
-    y: y - highlightRadius,
-    width: highlightRadius * 2,
-    height: highlightRadius * 2,
-  };
-  highlightPath.addArc(highlightRect, startAngleDeg, sweepAngleDeg);
-
-  const highlightPaint = Skia.Paint();
-  highlightPaint.setColor(Skia.Color('rgba(255,255,255,0.70)'));
-  highlightPaint.setStyle(1); // PaintStyle.Stroke = 1
-  highlightPaint.setStrokeWidth(3);
-  highlightPaint.setAntiAlias(true);
-  highlightPaint.setStrokeCap(1); // StrokeCap.Round = 1
+  // Mutate module-level glow paints' alpha for this frame.
+  // Safe because Skia renders synchronously within the same frame.
+  SETTLED_GLOW_PAINT.setAlphaf(settledGlowOpacity);
+  NEAR_PEG_GLOW_PAINT.setAlphaf(nearPegGlowOpacity);
 
   const glowRadius = outerRadius + 10;
 
@@ -207,21 +213,21 @@ function RingSingle({ ring, t }: RingSingleProps): React.JSX.Element {
         cx={x}
         cy={y + outerRadius * 0.15}
         r={outerRadius * 0.9}
-        paint={shadowPaint}
+        paint={SHADOW_PAINT}
       >
         <BlurMask blur={8} style="normal" respectCTM={false} />
       </Circle>
 
       {/* Settled glow (rendered behind the ring) */}
       {isSettled && settledGlowOpacity > 0 && (
-        <Circle cx={x} cy={y} r={glowRadius} paint={settledGlowPaint}>
+        <Circle cx={x} cy={y} r={glowRadius} paint={SETTLED_GLOW_PAINT}>
           <BlurMask blur={12} style="solid" respectCTM={false} />
         </Circle>
       )}
 
       {/* Near-peg glow (rendered behind the ring) */}
       {isNearPeg && !isSettled && nearPegGlowOpacity > 0 && (
-        <Circle cx={x} cy={y} r={glowRadius} paint={nearPegGlowPaint}>
+        <Circle cx={x} cy={y} r={glowRadius} paint={NEAR_PEG_GLOW_PAINT}>
           <BlurMask blur={12} style="solid" respectCTM={false} />
         </Circle>
       )}
@@ -230,7 +236,7 @@ function RingSingle({ ring, t }: RingSingleProps): React.JSX.Element {
       <Path path={torusPath} paint={torusPaint} />
 
       {/* Highlight arc */}
-      <Path path={highlightPath} paint={highlightPaint} />
+      <Path path={highlightPath} paint={HIGHLIGHT_PAINT} />
     </Group>
   );
 }

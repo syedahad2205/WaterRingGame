@@ -86,13 +86,31 @@ export const ARENA = {
 } as const;
 
 export const GAME = {
-  ringOuterRadiusSmall: 18,
-  ringOuterRadiusMedium: 24,
-  ringOuterRadiusLarge: 32,
+  /** Must match physics.ts RING_SMALL_RADIUS (Requirement 23.1). */
+  ringOuterRadiusSmall: 22,
+  /** Must match physics.ts RING_MEDIUM_RADIUS (Requirement 23.2). */
+  ringOuterRadiusMedium: 32,
+  /** Must match physics.ts RING_LARGE_RADIUS (Requirement 23.3). */
+  ringOuterRadiusLarge: 44,
   pegBaseRadius: 12,
   pegTipRadius: 6,
   waterColor: '#1565C0',
 } as const;
+
+/**
+ * Color-ID → hex lookup shared by RingRenderer and PegRenderer.
+ * Single source of truth so updates propagate everywhere.
+ */
+export const RING_COLOR_MAP: Record<string, string> = {
+  red: '#F44336',
+  blue: '#2196F3',
+  green: '#4CAF50',
+  yellow: '#FFEB3B',
+  purple: '#9C27B0',
+  orange: '#FF9800',
+} as const;
+
+export const DEFAULT_RING_COLOR = '#2196F3';
 
 export const Z_INDEX = {
   game: 1,

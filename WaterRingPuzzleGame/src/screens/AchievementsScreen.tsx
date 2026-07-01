@@ -9,22 +9,31 @@
  * Task: 8.5.3
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   FlatList,
   Modal,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
+import { useNavigation } from '@react-navigation/native';
+import { usePlayerStore } from '../store/slices/playerSlice';
+import { usePlayerProgressionStore } from '../store/slices/playerProgressionSlice';
+import { ACHIEVEMENT_DEFINITIONS } from '../features/progression/AchievementEngine';
+import type { AchievementDefinition } from '../features/progression/AchievementEngine';
+import { DS } from '../constants/designSystem';
+import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { GlassCard } from '../components/ui/GlassCard';
+import { GlassButton } from '../components/ui/GlassButton';
+import { ProgressBar as DSProgressBar } from '../components/ui/ProgressBar';
+import { Badge } from '../components/ui/Badge';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { Icon } from '../components/icons/GameIcons';
+import type { IconName } from '../components/icons/GameIcons';
+import { getAchievementVisual } from '../constants/achievementVisuals';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,104 +45,156 @@ interface Achievement {
   id: string;
   name: string;
   description: string;
-  icon: string;
+  iconName: IconName;
   tier: AchievementTier;
   unlocked: boolean;
-  /** 0–1 progress for in-progress achievements. 1 = complete. */
+  /** 0-1 progress for in-progress achievements. 1 = complete. */
   progress: number;
   progressLabel?: string; // e.g. "12 / 50"
   xpReward: number;
 }
 
 // ---------------------------------------------------------------------------
-// Mock data
+// Derive runtime achievement state from real AchievementEngine definitions
+// and player store / progression store data.
 // ---------------------------------------------------------------------------
 
-const ACHIEVEMENTS: Achievement[] = [
-  { id: 'first_win',    name: 'First Ring',       description: 'Complete your first challenge.',            icon: '🏅', tier: 'bronze',   unlocked: true,  progress: 1,    xpReward: 50 },
-  { id: 'no_continue', name: 'Pure Run',           description: 'Win without using a continue.',            icon: '💎', tier: 'gold',     unlocked: true,  progress: 1,    xpReward: 200 },
-  { id: 'streak_5',    name: 'On a Roll',          description: 'Win 5 challenges in a row.',               icon: '🔥', tier: 'silver',   unlocked: true,  progress: 1,    xpReward: 100 },
-  { id: 'streak_25',   name: 'Unstoppable',        description: 'Win 25 challenges in a row.',              icon: '⚡', tier: 'platinum', unlocked: false, progress: 0.2, progressLabel: '5 / 25',  xpReward: 500 },
-  { id: 'daily_7',     name: 'Daily Devotee',      description: 'Complete 7 daily challenges.',             icon: '🗓️', tier: 'silver',   unlocked: false, progress: 0.57, progressLabel: '4 / 7', xpReward: 150 },
-  { id: 'daily_30',    name: 'Monthly Master',     description: 'Complete 30 daily challenges.',            icon: '📅', tier: 'gold',     unlocked: false, progress: 0.13, progressLabel: '4 / 30', xpReward: 400 },
-  { id: 'stars_100',   name: 'Star Collector',     description: 'Earn 100 total stars.',                   icon: '⭐', tier: 'silver',   unlocked: false, progress: 0.42, progressLabel: '42 / 100', xpReward: 200 },
-  { id: 'stars_500',   name: 'Constellation',      description: 'Earn 500 total stars.',                   icon: '🌟', tier: 'gold',     unlocked: false, progress: 0.08, progressLabel: '42 / 500', xpReward: 600 },
-  { id: 'precision',   name: 'Precision Artist',   description: 'Complete 10 Precision challenges.',       icon: '🎯', tier: 'silver',   unlocked: false, progress: 0.3,  progressLabel: '3 / 10', xpReward: 250 },
-  { id: 'no_time',     name: 'Speed Demon',        description: 'Win a challenge with > 45 s remaining.',  icon: '💨', tier: 'gold',     unlocked: false, progress: 0,    xpReward: 300 },
-  { id: 'top_10',      name: 'Leaderboard Climber',description: 'Reach the global top 10.',                icon: '🏆', tier: 'platinum', unlocked: false, progress: 0,    xpReward: 1000 },
-  { id: 'prestige',    name: 'Reborn',             description: 'Reach Prestige 1.',                       icon: '♾️', tier: 'platinum', unlocked: false, progress: 0,    xpReward: 2000 },
-];
+/**
+ * Build a snapshot value for a given condition type from real store data.
+ */
+function snapshotValueForCondition(
+  conditionType: AchievementDefinition['conditionType'],
+  stats: {
+    gamesPlayed: number;
+    totalStars: number;
+    currentStreak: number;
+    prestige: number;
+  },
+): number {
+  switch (conditionType) {
+    case 'challenge_count': return stats.gamesPlayed;
+    case 'star_count':      return stats.totalStars;
+    case 'win_streak':      return stats.currentStreak;
+    case 'no_continue_win': return stats.gamesPlayed; // best-effort proxy
+    case 'speed_win':       return 0; // not yet tracked
+    case 'daily_count':     return 0; // not yet tracked
+    case 'prestige':        return stats.prestige;
+    case 'leaderboard_top10': return 0;
+    case 'mastery_bronze_all': return 0;
+    case 'mastery_platinum_any': return 0;
+    default: {
+      // Safety net: if a new conditionType is added to AchievementEngine but
+      // not handled here, return 0 instead of undefined (which would produce
+      // NaN in progress calculations).
+      const _exhaustive: never = conditionType;
+      void _exhaustive;
+      return 0;
+    }
+  }
+}
+
+function computeAchievements(stats: {
+  gamesPlayed: number;
+  totalStars: number;
+  currentStreak: number;
+  prestige: number;
+}): Achievement[] {
+  return ACHIEVEMENT_DEFINITIONS.map((def) => {
+    const currentValue = snapshotValueForCondition(def.conditionType, stats);
+    const unlocked = currentValue >= def.conditionValue;
+    const progress = def.conditionValue > 0
+      ? Math.min(1, currentValue / def.conditionValue)
+      : 0;
+    const progressLabel = def.conditionValue > 1
+      ? `${Math.min(currentValue, def.conditionValue)} / ${def.conditionValue}`
+      : undefined;
+
+    return {
+      id: def.id,
+      name: def.name,
+      description: def.description,
+      iconName: def.iconName as IconName,
+      tier: def.tier,
+      xpReward: def.xpReward,
+      unlocked,
+      progress,
+      progressLabel,
+    };
+  });
+}
 
 const TIER_COLOURS: Record<AchievementTier, string> = {
-  bronze: '#CD7F32',
-  silver: '#B0BEC5',
-  gold: '#FFD740',
-  platinum: '#80DEEA',
+  bronze: DS.colors.warning,
+  silver: DS.colors.text.secondary,
+  gold: DS.colors.accent,
+  platinum: DS.colors.secondary,
 };
-
-// ---------------------------------------------------------------------------
-// ProgressBar
-// ---------------------------------------------------------------------------
-
-function ProgressBar({ progress, color }: { progress: number; color: string }): React.JSX.Element {
-  const fillWidth = useSharedValue(0);
-
-  React.useEffect((): void => {
-    fillWidth.value = withTiming(Math.min(1, progress), { duration: 600, easing: Easing.out(Easing.ease) });
-  }, [fillWidth, progress]);
-
-  const fillStyle = useAnimatedStyle(() => ({
-    width: `${fillWidth.value * 100}%`,
-    backgroundColor: color,
-  }));
-
-  return (
-    <View style={styles.progressTrack}>
-      <Animated.View style={[styles.progressFill, fillStyle]} />
-    </View>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // AchievementCard
 // ---------------------------------------------------------------------------
 
-function AchievementCard({ item, onPress }: { item: Achievement; onPress: () => void }): React.JSX.Element {
+const AchievementCard = React.memo(function AchievementCard({ item, onPress }: { item: Achievement; onPress: () => void }): React.JSX.Element {
   const tierColor = TIER_COLOURS[item.tier];
+  const visual = getAchievementVisual(item.id);
   const isPartial = !item.unlocked && item.progress > 0;
 
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }: { pressed: boolean }) => [
-        styles.card,
-        item.unlocked && { borderColor: `${tierColor}55` },
-        !item.unlocked && styles.cardLocked,
-        pressed ? styles.cardPressed : undefined,
-      ]}
-      accessible={true}
+      style={{ flex: 1 }}
       accessibilityRole="button"
       accessibilityLabel={`${item.name}. ${item.unlocked ? 'Unlocked' : 'Locked'}. ${item.description}`}
-      accessibilityState={{ disabled: false }}
     >
-      <Text style={[styles.cardIcon, !item.unlocked && styles.cardIconLocked]} accessible={false}>
-        {item.unlocked ? item.icon : '🔒'}
-      </Text>
-      <Text style={[styles.cardName, !item.unlocked && styles.cardNameLocked]} numberOfLines={2}>
-        {item.name}
-      </Text>
-      {/* Tier dot */}
-      <View style={[styles.tierDot, { backgroundColor: item.unlocked ? tierColor : 'rgba(255,255,255,0.15)' }]} />
-      {/* In-progress bar */}
-      {isPartial ? (
-        <ProgressBar progress={item.progress} color={tierColor} />
-      ) : null}
-      {item.unlocked ? (
-        <Text style={[styles.xpTag, { color: tierColor }]}>+{item.xpReward} XP</Text>
-      ) : null}
+      <GlassCard
+        variant={item.unlocked ? 'medium' : 'subtle'}
+        noAnimation
+        glow={item.unlocked ? visual.glowColor : undefined}
+        style={[
+          styles.card,
+          !item.unlocked && styles.cardLocked,
+        ]}
+      >
+        {item.unlocked ? (
+          <View style={[styles.achieveBadge, {
+            backgroundColor: visual.badgeGradient[0],
+            borderColor: visual.frameColor,
+            shadowColor: visual.glowColor,
+          }]}>
+            <Icon name={item.iconName} size={24} color="#FFFFFF" />
+          </View>
+        ) : (
+          <View style={[styles.achieveBadge, {
+            backgroundColor: 'rgba(255,255,255,0.06)',
+            borderColor: 'rgba(255,255,255,0.1)',
+          }]}>
+            <Icon name="lock" size={24} color={DS.colors.text.tertiary} />
+          </View>
+        )}
+        <Text style={[styles.cardName, !item.unlocked && styles.cardNameLocked]} numberOfLines={2}>
+          {item.name}
+        </Text>
+        {/* Tier indicator */}
+        <Badge variant="status" value={item.tier.toUpperCase()} color={item.unlocked ? tierColor : 'rgba(255,255,255,0.15)'} />
+        {/* Progress bar for partial */}
+        {isPartial && (
+          <View style={{ width: '100%', gap: 2 }}>
+            <DSProgressBar value={item.progress} color={visual.glowColor} size="sm" style={{ width: '100%' }} />
+            {item.progressLabel ? (
+              <Text style={styles.progressText}>{item.progressLabel}</Text>
+            ) : null}
+          </View>
+        )}
+        {item.unlocked && (
+          <View style={styles.xpRow}>
+            <Icon name="check" size={12} color={DS.colors.success} />
+            <Text style={[styles.xpTag, { color: tierColor }]}>+{item.xpReward} XP</Text>
+          </View>
+        )}
+      </GlassCard>
     </Pressable>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // DetailModal
@@ -153,35 +214,27 @@ function DetailModal({ item, onClose }: { item: Achievement | null; onClose: () 
       accessibilityViewIsModal={true}
     >
       <Pressable style={styles.modalOverlay} onPress={onClose} accessible={false}>
-        <View style={[styles.modalPanel, { borderColor: `${tierColor}55` }]}>
-          <Text style={styles.modalIcon} accessible={false}>
-            {item.unlocked ? item.icon : '🔒'}
-          </Text>
+        <GlassCard variant="frosted" glow={tierColor} style={styles.modalPanel}>
+          {item.unlocked ? (
+            <Icon name={item.iconName} size={48} color={tierColor} />
+          ) : (
+            <Icon name="lock" size={48} color={DS.colors.text.tertiary} />
+          )}
           <Text style={styles.modalName} accessibilityRole="header">{item.name}</Text>
-          <View style={[styles.tierPill, { backgroundColor: `${tierColor}22`, borderColor: `${tierColor}55` }]}>
-            <Text style={[styles.tierPillText, { color: tierColor }]}>
-              {item.tier.toUpperCase()}
-            </Text>
-          </View>
+          <Badge variant="rank" value={item.tier.toUpperCase()} color={`${tierColor}22`} />
           <Text style={styles.modalDesc}>{item.description}</Text>
-          {!item.unlocked && item.progress > 0 ? (
+          {!item.unlocked && item.progress > 0 && (
             <View style={styles.modalProgress}>
-              <ProgressBar progress={item.progress} color={tierColor} />
-              {item.progressLabel ? (
-                <Text style={styles.modalProgressLabel}>{item.progressLabel}</Text>
-              ) : null}
+              <DSProgressBar value={item.progress} color={tierColor} size="md" />
+              {item.progressLabel && <Text style={styles.modalProgressLabel}>{item.progressLabel}</Text>}
             </View>
-          ) : null}
-          <Text style={styles.modalXp}>Reward: +{item.xpReward} XP</Text>
-          <Pressable
-            onPress={onClose}
-            style={styles.modalClose}
-            accessibilityRole="button"
-            accessibilityLabel="Close"
-          >
-            <Text style={styles.modalCloseText}>Close</Text>
-          </Pressable>
-        </View>
+          )}
+          <View style={styles.modalXpRow}>
+            <Icon name="star" size={16} />
+            <Text style={styles.modalXp}>+{item.xpReward} XP</Text>
+          </View>
+          <GlassButton label="Close" variant="ghost" onPress={onClose} iconLeft="close" size="md" />
+        </GlassCard>
       </Pressable>
     </Modal>
   );
@@ -192,30 +245,58 @@ function DetailModal({ item, onClose }: { item: Achievement | null; onClose: () 
 // ---------------------------------------------------------------------------
 
 export default function AchievementsScreen(): React.JSX.Element {
+  const navigation = useNavigation();
   const [selected, setSelected] = useState<Achievement | null>(null);
 
-  const unlockedCount = ACHIEVEMENTS.filter((a) => a.unlocked).length;
+  const totalStars = usePlayerStore((s) => s.totalStars);
+  const prestige = usePlayerStore((s) => s.prestige);
+  const gamesPlayed = usePlayerProgressionStore((s) => s.lifetimeGamesPlayed);
+  const currentStreak = usePlayerProgressionStore((s) => s.currentStreak);
+
+  const achievements = useMemo(
+    () => computeAchievements({ gamesPlayed, totalStars, currentStreak, prestige }),
+    [gamesPlayed, totalStars, currentStreak, prestige],
+  );
+
+  const unlockedCount = achievements.filter((a) => a.unlocked).length;
+
+  const contentOpacity = useSharedValue(0);
+  const contentTranslateY = useSharedValue(20);
+
+  useEffect(() => {
+    contentOpacity.value = withTiming(1, { duration: 400 });
+    contentTranslateY.value = withDelay(100, withTiming(0, { duration: 350, easing: Easing.out(Easing.ease) }));
+  }, []);
+
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
+  }));
 
   const renderItem = useCallback(({ item }: { item: Achievement }): React.JSX.Element => (
     <AchievementCard item={item} onPress={(): void => setSelected(item)} />
   ), []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title} accessibilityRole="header">Achievements</Text>
-
-      {/* Summary bar */}
-      <View style={styles.summaryBar}>
-        <Text style={styles.summaryText}>
-          {unlockedCount} / {ACHIEVEMENTS.length} unlocked
-        </Text>
-        <View style={styles.summaryTrack}>
-          <View style={[styles.summaryFill, { width: `${(unlockedCount / ACHIEVEMENTS.length) * 100}%` }]} />
-        </View>
+    <ScreenContainer>
+      {/* Header with back button */}
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
+          <Icon name="back" size={28} color={DS.colors.text.primary} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Achievements</Text>
+        <View style={{ width: 28 }} />
       </View>
 
+      <Animated.View style={contentStyle}>
+      {/* Summary bar */}
+      <GlassCard variant="medium" style={styles.summaryCard}>
+        <Text style={styles.summaryText}>{unlockedCount} / {achievements.length} unlocked</Text>
+        <DSProgressBar value={achievements.length > 0 ? unlockedCount / achievements.length : 0} color={DS.colors.primary} size="sm" />
+      </GlassCard>
+
       <FlatList
-        data={ACHIEVEMENTS}
+        data={achievements}
         renderItem={renderItem}
         keyExtractor={(a): string => a.id}
         numColumns={2}
@@ -223,9 +304,10 @@ export default function AchievementsScreen(): React.JSX.Element {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
+      </Animated.View>
 
       <DetailModal item={selected} onClose={(): void => setSelected(null)} />
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
@@ -234,41 +316,125 @@ export default function AchievementsScreen(): React.JSX.Element {
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#070f1e' },
-  title: { color: '#fff', fontSize: 28, fontWeight: '800', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  summaryBar: { paddingHorizontal: 20, gap: 6, marginBottom: 12 },
-  summaryText: { color: 'rgba(255,255,255,0.55)', fontSize: 13 },
-  summaryTrack: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
-  summaryFill: { height: '100%', borderRadius: 2, backgroundColor: '#4FC3F7' },
-  listContent: { paddingHorizontal: 12, paddingBottom: 32 },
-  row: { gap: 10, marginBottom: 10 },
-  card: {
-    flex: 1, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 16, padding: 14, borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.1)', gap: 6, minHeight: 130,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: DS.spacing.xl,
+    paddingTop: DS.spacing.lg,
+    paddingBottom: DS.spacing.sm,
   },
-  cardLocked: { backgroundColor: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)' },
-  cardPressed: { opacity: 0.75, transform: [{ scale: 0.97 }] },
-  cardIcon: { fontSize: 32 },
-  cardIconLocked: { opacity: 0.25 },
-  cardName: { color: '#fff', fontSize: 12, fontWeight: '700', textAlign: 'center' },
-  cardNameLocked: { color: 'rgba(255,255,255,0.3)' },
-  tierDot: { width: 8, height: 8, borderRadius: 4 },
-  progressTrack: { width: '100%', height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 2 },
-  xpTag: { fontSize: 10, fontWeight: '700' },
+  headerTitle: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.title2,
+    fontWeight: DS.typography.weight.heavy,
+  },
+  summaryCard: {
+    marginHorizontal: DS.spacing.xl,
+    marginBottom: DS.spacing.md,
+    padding: DS.spacing.lg,
+    gap: DS.spacing.xs,
+  },
+  summaryText: {
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.footnote,
+  },
+  listContent: {
+    paddingHorizontal: DS.spacing.md,
+    paddingBottom: DS.spacing.xxxl,
+  },
+  row: {
+    gap: DS.spacing.sm,
+    marginBottom: DS.spacing.sm,
+  },
+  card: {
+    alignItems: 'center' as const,
+    padding: DS.spacing.lg,
+    gap: DS.spacing.xs,
+    minHeight: 130,
+  },
+  cardLocked: {
+    opacity: 0.55,
+  },
+  achieveBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  progressText: {
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.caption2,
+    textAlign: 'center' as const,
+  },
+  cardName: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.caption1,
+    fontWeight: DS.typography.weight.bold,
+    textAlign: 'center' as const,
+  },
+  cardNameLocked: {
+    color: DS.colors.text.tertiary,
+  },
+  xpRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: DS.spacing.xxs,
+  },
+  xpTag: {
+    fontSize: DS.typography.size.caption2,
+    fontWeight: DS.typography.weight.bold,
+  },
 
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', padding: 32 },
-  modalPanel: { width: '100%', backgroundColor: '#0d2137', borderRadius: 24, padding: 28, alignItems: 'center', gap: 10, borderWidth: 1.5 },
-  modalIcon: { fontSize: 48 },
-  modalName: { color: '#fff', fontSize: 22, fontWeight: '800', textAlign: 'center' },
-  tierPill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
-  tierPillText: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  modalDesc: { color: 'rgba(255,255,255,0.6)', fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  modalProgress: { width: '100%', gap: 6 },
-  modalProgressLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center' },
-  modalXp: { color: '#FFD740', fontSize: 14, fontWeight: '700' },
-  modalClose: { marginTop: 8, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14 },
-  modalCloseText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    padding: DS.spacing.xxxl,
+  },
+  modalPanel: {
+    width: '100%' as unknown as number,
+    padding: DS.spacing.xxl,
+    alignItems: 'center' as const,
+    gap: DS.spacing.sm,
+  },
+  modalName: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.title3,
+    fontWeight: DS.typography.weight.heavy,
+    textAlign: 'center' as const,
+  },
+  modalDesc: {
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.subhead,
+    textAlign: 'center' as const,
+    lineHeight: 20,
+  },
+  modalProgress: {
+    width: '100%' as unknown as number,
+    gap: DS.spacing.xs,
+  },
+  modalProgressLabel: {
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.caption1,
+    textAlign: 'center' as const,
+  },
+  modalXpRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: DS.spacing.xxs,
+  },
+  modalXp: {
+    color: DS.colors.accent,
+    fontSize: DS.typography.size.subhead,
+    fontWeight: DS.typography.weight.bold,
+  },
 });

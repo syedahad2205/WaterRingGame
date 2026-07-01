@@ -11,7 +11,7 @@
  * Requirements: 38.3, 4.3
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Canvas,
   Path,
@@ -20,6 +20,10 @@ import {
   BlurMask,
   Group,
 } from '@shopify/react-native-skia';
+
+import { RING_COLOR_MAP } from '../../../constants/ui';
+import { DS } from '../../../constants/designSystem';
+import type { PegSkinConfig } from '../../../constants/cosmeticCatalog';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,20 +44,9 @@ export interface PegRendererProps {
   pegs: PegData[];
   /** Elapsed time in seconds, used for glow animation. */
   t: number;
+  /** Optional equipped peg skin config — overrides default peg body color. */
+  pegSkin?: PegSkinConfig | null;
 }
-
-// ---------------------------------------------------------------------------
-// Color map — same as RingRenderer for accepted color indicator
-// ---------------------------------------------------------------------------
-
-const RING_COLOR_MAP: Record<string, string> = {
-  red: '#F44336',
-  blue: '#2196F3',
-  green: '#4CAF50',
-  yellow: '#FFEB3B',
-  purple: '#9C27B0',
-  orange: '#FF9800',
-};
 
 const DEFAULT_INDICATOR_COLOR = '#FFFFFF';
 
@@ -82,7 +75,12 @@ const CANVAS_PADDING = 24;
 /** Radius of the color indicator dot at the tip. */
 const INDICATOR_DOT_RADIUS = 6;
 /** Color of the peg body. */
-const PEG_BODY_COLOR = '#B0BEC5'; // blue-grey
+const PEG_BODY_COLOR = '#B0BEC5'; // blue-grey — Skia rendering constant, no DS equivalent
+
+/** Module-level peg body paint — colour never changes. */
+const BODY_PAINT = Skia.Paint();
+BODY_PAINT.setColor(Skia.Color(PEG_BODY_COLOR));
+BODY_PAINT.setAntiAlias(true);
 
 // ---------------------------------------------------------------------------
 // PegRenderer component
@@ -91,7 +89,7 @@ const PEG_BODY_COLOR = '#B0BEC5'; // blue-grey
 /**
  * PegRenderer renders all game pegs onto a single Skia Canvas.
  */
-export default function PegRenderer({ pegs, t }: PegRendererProps): React.JSX.Element {
+export default function PegRenderer({ pegs, t, pegSkin }: PegRendererProps): React.JSX.Element {
   if (pegs.length === 0) {
     return <Canvas style={{ width: 0, height: 0 }} />;
   }
@@ -115,7 +113,7 @@ export default function PegRenderer({ pegs, t }: PegRendererProps): React.JSX.El
       accessibilityLabel="Peg layer"
     >
       {pegs.map((peg) => (
-        <PegSingle key={peg.id} peg={peg} t={t} />
+        <PegSingle key={peg.id} peg={peg} t={t} pegSkin={pegSkin} />
       ))}
     </Canvas>
   );
@@ -128,53 +126,68 @@ export default function PegRenderer({ pegs, t }: PegRendererProps): React.JSX.El
 interface PegSingleProps {
   peg: PegData;
   t: number;
+  pegSkin?: PegSkinConfig | null;
 }
 
 // eslint-disable-next-line max-lines-per-function
-function PegSingle({ peg, t }: PegSingleProps): React.JSX.Element {
+function PegSingle({ peg, t, pegSkin }: PegSingleProps): React.JSX.Element {
   const { x, y, baseRadius, tipRadius, acceptedColorId, glowColor, isOccupied } = peg;
 
-  // ── 1. Cone (trapezoid) path ───────────────────────────────────────────────
-  // The peg is drawn as a trapezoid:
-  //   - Bottom edge: width = 2 × baseRadius, centred at (x, y)
-  //   - Top edge:    width = 2 × tipRadius,  centred at (x, y - PEG_HEIGHT)
-  const topY = y - PEG_HEIGHT;
-  const conePath = Skia.Path.Make();
-  conePath.moveTo(x - baseRadius, y);            // bottom-left
-  conePath.lineTo(x + baseRadius, y);            // bottom-right
-  conePath.lineTo(x + tipRadius, topY);          // top-right
-  conePath.lineTo(x - tipRadius, topY);          // top-left
-  conePath.close();
+  // Build peg body paint from equipped skin or default
+  const bodyPaint = useMemo(() => {
+    const p = Skia.Paint();
+    p.setColor(Skia.Color(pegSkin?.base ?? PEG_BODY_COLOR));
+    p.setAntiAlias(true);
+    return p;
+  }, [pegSkin]);
 
-  const bodyPaint = Skia.Paint();
-  bodyPaint.setColor(Skia.Color(PEG_BODY_COLOR));
-  bodyPaint.setAntiAlias(true);
+  // ── 1. Cone (trapezoid) path ───────────────────────────────────────────────
+  const topY = y - PEG_HEIGHT;
+  const conePath = useMemo(() => {
+    const p = Skia.Path.Make();
+    p.moveTo(x - baseRadius, y);            // bottom-left
+    p.lineTo(x + baseRadius, y);            // bottom-right
+    p.lineTo(x + tipRadius, topY);          // top-right
+    p.lineTo(x - tipRadius, topY);          // top-left
+    p.close();
+    return p;
+  }, [x, y, baseRadius, tipRadius, topY]);
 
   // ── 2. Glow when occupied ────────────────────────────────────────────────
   const glowOpacity = isOccupied ? pulseValue(t, 0.3, 0.6) : 0;
-  const glowPaint = Skia.Paint();
-  glowPaint.setColor(Skia.Color(glowColor));
+
+  const glowPaint = useMemo(() => {
+    const p = Skia.Paint();
+    p.setColor(Skia.Color(glowColor));
+    p.setAntiAlias(true);
+    return p;
+  }, [glowColor]);
+  // Alpha changes each frame — mutate the cached paint.
   glowPaint.setAlphaf(glowOpacity);
-  glowPaint.setAntiAlias(true);
 
   // Glow ellipse radius covers the whole peg.
-  const glowW = baseRadius + 12;
-  const glowH = (PEG_HEIGHT / 2) + 12;
-  const glowCy = y - PEG_HEIGHT / 2;
-
-  const glowPath = Skia.Path.Make();
-  glowPath.addOval({
-    x: x - glowW,
-    y: glowCy - glowH,
-    width: glowW * 2,
-    height: glowH * 2,
-  });
+  const glowPath = useMemo(() => {
+    const glowW = baseRadius + 12;
+    const glowH = (PEG_HEIGHT / 2) + 12;
+    const glowCy = y - PEG_HEIGHT / 2;
+    const p = Skia.Path.Make();
+    p.addOval({
+      x: x - glowW,
+      y: glowCy - glowH,
+      width: glowW * 2,
+      height: glowH * 2,
+    });
+    return p;
+  }, [x, y, baseRadius]);
 
   // ── 3. Color indicator dot at tip ────────────────────────────────────────
-  const indicatorColor = RING_COLOR_MAP[acceptedColorId] ?? DEFAULT_INDICATOR_COLOR;
-  const dotPaint = Skia.Paint();
-  dotPaint.setColor(Skia.Color(indicatorColor));
-  dotPaint.setAntiAlias(true);
+  const dotPaint = useMemo(() => {
+    const indicatorColor = RING_COLOR_MAP[acceptedColorId] ?? DEFAULT_INDICATOR_COLOR;
+    const p = Skia.Paint();
+    p.setColor(Skia.Color(indicatorColor));
+    p.setAntiAlias(true);
+    return p;
+  }, [acceptedColorId]);
 
   return (
     <Group>

@@ -39,7 +39,7 @@ export class GhostReplayLRUCache {
 
     // If single entry exceeds budget, don't cache it
     if (sizeBytes > this.budgetBytes) {
-      console.warn(`[GhostReplayLRUCache] Entry ${id} (${(sizeBytes / 1e6).toFixed(1)}MB) exceeds budget; not cached`);
+      if (__DEV__) console.warn(`[GhostReplayLRUCache] Entry ${id} (${(sizeBytes / 1e6).toFixed(1)}MB) exceeds budget; not cached`);
       return;
     }
 

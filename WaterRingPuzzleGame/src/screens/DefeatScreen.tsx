@@ -14,18 +14,19 @@
 
 import React, { useEffect } from 'react';
 import {
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
 import { useChallengeStore } from '../store/slices/challengeSlice';
+import { useEconomyStore } from '../store/slices/economySlice';
+import { AdService } from '../features/economy/AdService';
+import { DS } from '@/constants/designSystem';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { Icon } from '@/components/icons/GameIcons';
+import { ProgressBar } from '@/components/ui/ProgressBar';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,48 +56,68 @@ interface DefeatScreenProps {
  * Requirements: 34.4 (encouraging language only)
  * Task: 8.3.4
  */
-// eslint-disable-next-line max-lines-per-function
 export default function DefeatScreen({ navigation, route }: DefeatScreenProps): React.JSX.Element {
   const continueCount = useChallengeStore((state) => state.continueCount);
   const ringsPlaced = route?.params?.ringsPlaced ?? 0;
   const ringsTotal = route?.params?.ringsTotal ?? 0;
   const challengeNumber = route?.params?.challengeNumber ?? 1;
 
-  const panelOpacity = useSharedValue(0);
-  const panelTranslateY = useSharedValue(40);
-
-  useEffect((): void => {
-    panelOpacity.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.ease) });
-    panelTranslateY.value = withTiming(0, { duration: 300, easing: Easing.out(Easing.ease) });
-  }, [panelOpacity, panelTranslateY]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: panelOpacity.value,
-    transform: [{ translateY: panelTranslateY.value }],
-  }));
-
   const progressPercent = ringsTotal > 0 ? Math.round((ringsPlaced / ringsTotal) * 100) : 0;
+
+  const contentOpacity = useSharedValue(0);
+  const contentTranslateY = useSharedValue(20);
+
+  useEffect(() => {
+    contentOpacity.value = withTiming(1, { duration: 400 });
+    contentTranslateY.value = withDelay(100, withTiming(0, { duration: 350, easing: Easing.out(Easing.ease) }));
+  }, []);
+
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
+  }));
 
   return (
     <View style={styles.backdrop}>
-      <Animated.View style={[styles.panel, animatedStyle]}>
-        {/* Background */}
-        <View style={styles.background} />
+      <GlassCard
+        variant="frosted"
+        borderRadius={DS.radius.dialog}
+        glow={DS.colors.warning}
+        noAnimation={false}
+        style={styles.card}
+      >
+        <Animated.View style={[styles.content, contentStyle]}>
+          {/* Encouraging header -- NEVER discouraging (Requirement 34.4) */}
+          <Icon
+            name="timer"
+            size={56}
+            color={DS.colors.warning}
+            style={styles.icon}
+          />
 
-        <View style={styles.content}>
-          {/* Encouraging header — NEVER discouraging (Requirement 34.4) */}
-          <Text style={styles.emoji} accessible={false}>⏰</Text>
-          <Text style={styles.title} accessibilityRole="header">{'Time\'s Up!'}</Text>
-          <Text style={styles.subtitle}>So close — keep practising!</Text>
+          <Text
+            style={styles.title}
+            accessibilityRole="header"
+          >
+            {"Time's Up!"}
+          </Text>
+
+          <Text style={styles.subtitle}>
+            So close -- keep practising!
+          </Text>
 
           {/* Progress indicator */}
           {ringsTotal > 0 ? (
             <View style={styles.progressSection}>
-              <Text style={styles.progressLabel}>Rings placed</Text>
-              <View style={styles.progressBarContainer}>
-                <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
-              </View>
-              <Text style={styles.progressFraction}>{ringsPlaced} / {ringsTotal}</Text>
+              <Text style={styles.progressLabel}>RINGS PLACED</Text>
+              <ProgressBar
+                value={ringsTotal > 0 ? ringsPlaced / ringsTotal : 0}
+                size="lg"
+                color={DS.colors.secondary}
+                showLabel
+                label={`${ringsPlaced} / ${ringsTotal}`}
+                style={styles.progressBar}
+              />
             </View>
           ) : null}
 
@@ -108,31 +129,49 @@ export default function DefeatScreen({ navigation, route }: DefeatScreenProps): 
           ) : null}
 
           <View style={styles.buttonRow}>
-            <Pressable
-              style={({ pressed }: { pressed: boolean }) => [styles.primaryButton, pressed ? styles.buttonPressed : undefined]}
+            <GlassButton
+              label="Try Again"
+              variant="primary"
+              iconLeft="replay"
+              size="lg"
               onPress={(): void => {
-                // Try again — navigate back to Game with same challenge number
                 navigation?.navigate('Game', { challengeNumber });
               }}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel="Try Again"
-            >
-              <Text style={styles.primaryButtonLabel}>Try Again</Text>
-            </Pressable>
+              style={styles.button}
+            />
 
-            <Pressable
-              style={({ pressed }: { pressed: boolean }) => [styles.secondaryButton, pressed ? styles.buttonPressed : undefined]}
+            <GlassButton
+              label="Watch Ad +50"
+              variant="accent"
+              iconLeft="coin"
+              size="lg"
+              onPress={async () => {
+                const adService = AdService.getInstance();
+                try {
+                  const reward = await adService.showRewardedAd('coins');
+                  if (reward) {
+                    useEconomyStore.getState().creditCoins(reward.amount, 'ad_reward');
+                  }
+                } catch (err) {
+                  if (__DEV__) {
+                    console.warn('[DefeatScreen] Rewarded ad failed:', err);
+                  }
+                }
+              }}
+              style={styles.button}
+            />
+
+            <GlassButton
+              label="Home"
+              variant="ghost"
+              iconLeft="home"
+              size="lg"
               onPress={(): void => navigation?.navigate('MainTabs')}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel="Go to Home"
-            >
-              <Text style={styles.secondaryButtonLabel}>Home</Text>
-            </Pressable>
+              style={styles.button}
+            />
           </View>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </GlassCard>
     </View>
   );
 }
@@ -144,108 +183,59 @@ export default function DefeatScreen({ navigation, route }: DefeatScreenProps): 
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(5, 12, 25, 0.88)',
+    backgroundColor: 'rgba(10,14,26,0.88)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  panel: {
+  card: {
     width: 320,
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(239,83,80,0.25)',
-  },
-  background: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(12, 28, 52, 0.96)',
   },
   content: {
-    padding: 28,
+    padding: DS.spacing.xxl,
     alignItems: 'center',
-    gap: 12,
+    gap: DS.spacing.md,
   },
-  emoji: {
-    fontSize: 48,
-    marginBottom: 4,
+  icon: {
+    marginBottom: DS.spacing.xxs,
   },
   title: {
-    color: '#fff',
-    fontSize: 26,
-    fontWeight: '800',
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.title2,
+    fontWeight: DS.typography.weight.heavy,
     textAlign: 'center',
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 15,
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.subhead,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: DS.spacing.sm,
   },
   progressSection: {
     width: '100%',
     alignItems: 'center',
-    gap: 6,
-    marginVertical: 8,
+    gap: DS.spacing.xs,
+    marginVertical: DS.spacing.sm,
   },
   progressLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
-    fontWeight: '600',
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.caption1,
+    fontWeight: DS.typography.weight.semibold,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: DS.typography.letterSpacing.caption1,
   },
-  progressBarContainer: {
+  progressBar: {
     width: '100%',
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 5,
-    backgroundColor: '#4FC3F7',
-  },
-  progressFraction: {
-    color: '#4FC3F7',
-    fontSize: 14,
-    fontWeight: '700',
   },
   continueNote: {
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 13,
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.footnote,
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
+    gap: DS.spacing.md,
+    marginTop: DS.spacing.md,
   },
-  primaryButton: {
+  button: {
     flex: 1,
-    backgroundColor: '#4FC3F7',
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  primaryButtonLabel: {
-    color: '#0a2342',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  secondaryButton: {
-    flex: 1,
-    backgroundColor: 'rgba(79,195,247,0.12)',
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(79,195,247,0.3)',
-  },
-  secondaryButtonLabel: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonPressed: {
-    opacity: 0.75,
   },
 });

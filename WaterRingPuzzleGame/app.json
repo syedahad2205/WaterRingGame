@@ -1,4 +1,6 @@
 {
   "name": "WaterRingPuzzleGame",
-  "displayName": "Water Ring"
+  "displayName": "Water Ring",
+  "version": "1.0.0",
+  "buildNumber": "1"
 }

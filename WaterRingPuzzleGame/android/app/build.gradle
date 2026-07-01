@@ -9,6 +9,87 @@ apply plugin: "com.google.firebase.crashlytics"
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
+// ---------------------------------------------------------------------------
+// Locate the node binary without relying on the Gradle daemon's minimal PATH.
+// The daemon does not inherit shell PATH, so NVM/Homebrew paths are invisible.
+// We search known filesystem locations directly — no shell subprocess needed.
+// ---------------------------------------------------------------------------
+def resolveNodePath() {
+    // 0. Explicit override in local.properties (most reliable — set nodejs.path=/your/node/path)
+    def localPropsFile = new File(rootDir, 'local.properties')
+    if (localPropsFile.exists()) {
+        def localProps = new Properties()
+        localPropsFile.withInputStream { localProps.load(it) }
+        def nodePath = localProps.getProperty('nodejs.path')
+        if (nodePath && new File(nodePath).canExecute()) return nodePath
+    }
+
+    // 1. Common fixed locations (Homebrew Intel / Apple Silicon, system)
+    def fixedPaths = [
+        '/usr/local/bin/node',
+        '/opt/homebrew/bin/node',
+        '/opt/homebrew/opt/node/bin/node',
+        '/usr/bin/node',
+        '/usr/local/nodejs/bin/node',
+    ]
+    for (p in fixedPaths) {
+        if (new File(p).canExecute()) return p
+    }
+
+    def home = System.getProperty('user.home')
+
+    // 2. NVM — scan ~/.nvm/versions/node/<version>/bin/node, newest first
+    def nvmDir = new File(home, '.nvm/versions/node')
+    if (nvmDir.isDirectory()) {
+        def nodeBin = nvmDir.listFiles()
+            ?.toList()?.sort()?.reverse()
+            ?.collect { new File(it, 'bin/node') }
+            ?.find { it.canExecute() }
+        if (nodeBin) return nodeBin.absolutePath
+    }
+
+    // 3. Volta
+    def voltaBin = new File(home, '.volta/bin/node')
+    if (voltaBin.canExecute()) return voltaBin.absolutePath
+
+    // 4. fnm (Fast Node Manager)
+    def fnmDir = new File(home, '.fnm/node-versions')
+    if (fnmDir.isDirectory()) {
+        def nodeBin = fnmDir.listFiles()
+            ?.toList()?.sort()?.reverse()
+            ?.collect { new File(it, 'installation/bin/node') }
+            ?.find { it.canExecute() }
+        if (nodeBin) return nodeBin.absolutePath
+    }
+
+    // 5. n version manager
+    for (nPath in [new File(home, 'n/bin/node'), new File('/usr/local/n/versions')]) {
+        if (nPath.canExecute()) return nPath.absolutePath
+    }
+
+    // 6. Shell lookup — try zsh then bash (sources login profile to pick up version managers)
+    for (shell in ['/bin/zsh', '/bin/bash']) {
+        try {
+            def proc = new ProcessBuilder([shell, '-lc', 'which node'])
+                .redirectErrorStream(true).start()
+            def result = proc.inputStream.text.trim()
+            proc.waitFor()
+            if (result && new File(result).canExecute()) return result
+        } catch (Exception ignored) {}
+    }
+
+    // Fallback: will fail with a clear error pointing here
+    throw new GradleException(
+        "\n\n[React Native] Cannot locate 'node'.\n" +
+        "Fix: add the following line to android/local.properties:\n" +
+        "  nodejs.path=/absolute/path/to/node\n" +
+        "Run 'which node' in your terminal to find the path.\n"
+    )
+}
+
+def resolvedNode = resolveNodePath()
+logger.lifecycle("React Native — resolved node: ${resolvedNode}")
+
 react {
     /* Folders */
     //   The root of your project, i.e. where "package.json" lives. Default is '..'
@@ -18,7 +99,8 @@ react {
     //   The folder where the react-native Codegen package is. Default is ../node_modules/@react-native/codegen
     // codegenDir = file("../node_modules/@react-native/codegen")
     //   The cli.js file which is the React Native CLI entrypoint. Default is ../node_modules/react-native/cli.js
-    // cliFile = file("../node_modules/react-native/cli.js")
+    // Explicitly set so Gradle never tries to auto-detect via a bare "node" subprocess.
+    cliFile = file("../../node_modules/@react-native-community/cli/build/bin.js")
 
     /* Variants */
     //   The list of variants to that are debuggable. For those we're going to
@@ -27,8 +109,8 @@ react {
     // debuggableVariants = ["liteDebug", "prodDebug"]
 
     /* Bundling */
-    //   A list containing the node command and its flags. Default is just 'node'.
-    // nodeExecutableAndArgs = ["node"]
+    // Explicit absolute path — daemon cannot rely on shell PATH for node.
+    nodeExecutableAndArgs = [resolvedNode]
     //
     //   The command to run when bundling. By default is 'bundle'
     // bundleCommand = "ram-bundle"
@@ -57,7 +139,7 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -83,7 +165,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         // Required for react-native-reanimated
         manifestPlaceholders = [appAuthRedirectScheme: "com.syntaxandco.waterring"]
     }
@@ -94,17 +176,24 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (project.hasProperty('WATER_RING_UPLOAD_STORE_FILE')) {
+                storeFile file(WATER_RING_UPLOAD_STORE_FILE)
+                storePassword WATER_RING_UPLOAD_STORE_PASSWORD
+                keyAlias WATER_RING_UPLOAD_KEY_ALIAS
+                keyPassword WATER_RING_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release.storeFile ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            shrinkResources enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
     packagingOptions {
@@ -133,3 +222,5 @@ dependencies {
     }
 }
 
+
+apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)

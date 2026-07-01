@@ -58,7 +58,9 @@ import type { PhysicsSharedBridge } from '../../../types/game';
 import type { InputState } from '../physics/PhysicsWorld';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { WinCondition } from './WinCondition';
+import { AdaptiveAssistController } from '../adaptive/AdaptiveAssistController';
 import { getItem, setItem } from '../../../services/storage/MMKVStorage';
+import { triggerHaptic } from '../../../constants/hapticPatterns';
 
 // ---------------------------------------------------------------------------
 // Constants (Requirements 9.2)
@@ -75,6 +77,12 @@ const CHECKPOINT_KEY = 'challenge_checkpoint';
 
 /** How often to write a routine checkpoint (ms). */
 const CHECKPOINT_INTERVAL_MS = 1000;
+
+/** Timer warning threshold in seconds — triggers amber haptic/audio cue. */
+const TIMER_WARNING_THRESHOLD_S = 10;
+
+/** Timer critical threshold in seconds — triggers critical haptic/audio cue. */
+const TIMER_CRITICAL_THRESHOLD_S = 5;
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -123,9 +131,21 @@ interface LoopState {
   lastCheckpointMs: number;
   winCallback: (() => void) | null;
   timerExpireCallback: (() => void) | null;
+  /** Whether the timer-warning haptic has already been fired this session. */
+  timerWarningFired: boolean;
+  /** Whether the timer-critical haptic has already been fired this session. */
+  timerCriticalFired: boolean;
 }
 
 let _loop: LoopState | null = null;
+
+/**
+ * Optional callbacks for progressive music hooks.
+ * Set from GameScreen via GameLoop.setOnTimerAmberCallback / setOnTimerCriticalCallback.
+ * This bridges the React hook world (useAudio) with the pure-class GameLoop.
+ */
+let _onTimerAmberCallback: (() => void) | null = null;
+let _onTimerCriticalCallback: (() => void) | null = null;
 
 /**
  * Previous-tick ring positions stored for interpolation.
@@ -197,7 +217,25 @@ function checkTimerExpiry(state: LoopState, dt: number): void {
   if (state.winLossState !== 'playing') {
     return;
   }
-  state.timerRemainingMs -= dt;
+  state.timerRemainingMs = Math.max(0, state.timerRemainingMs - dt);
+
+  // Timer warning haptic + audio callback at threshold (fire once per session)
+  const timerRemainingS = state.timerRemainingMs / 1000;
+  if (!state.timerWarningFired && timerRemainingS <= TIMER_WARNING_THRESHOLD_S && timerRemainingS > 0) {
+    state.timerWarningFired = true;
+    triggerHaptic('timerWarning');
+    if (_onTimerAmberCallback) {
+      try { _onTimerAmberCallback(); } catch { /* non-fatal */ }
+    }
+  }
+  if (!state.timerCriticalFired && timerRemainingS <= TIMER_CRITICAL_THRESHOLD_S && timerRemainingS > 0) {
+    state.timerCriticalFired = true;
+    triggerHaptic('timerCritical');
+    if (_onTimerCriticalCallback) {
+      try { _onTimerCriticalCallback(); } catch { /* non-fatal */ }
+    }
+  }
+
   if (state.timerRemainingMs <= 0) {
     state.timerRemainingMs = 0;
     state.winLossState = 'lost';
@@ -205,7 +243,9 @@ function checkTimerExpiry(state: LoopState, dt: number): void {
     state.config.bridge.timerRemaining.value = 0;
 
     if (state.timerExpireCallback) {
-      state.timerExpireCallback();
+      try { state.timerExpireCallback(); } catch (e) {
+        if (__DEV__) console.warn('GameLoop: onTimerExpire callback threw:', e);
+      }
     }
     // Stop the loop — challenge is over.
     cancelRafLoop(state);
@@ -213,12 +253,17 @@ function checkTimerExpiry(state: LoopState, dt: number): void {
 }
 
 /**
- * Adaptive assistance placeholder — will be implemented in a later task.
+ * Evaluate adaptive assistance signals for the current tick.
  *
- * Requirement 9.3 (tick order step 6: checkAdaptiveAssistance)
+ * Calls `AdaptiveAssistController.getActiveAssists()` which evaluates
+ * real-time player behaviour (input rate, consecutive failures, quit count)
+ * and updates the controller's internal assist flag set. UI components
+ * query the controller directly for the active flags.
+ *
+ * Requirement 9.3 (tick order step 6: checkAdaptiveAssistance), 16.2
  */
 function checkAdaptiveAssistance(_state: LoopState): void {
-  // Implemented in task 5.x (AdaptiveAssistController).
+  AdaptiveAssistController.getActiveAssists();
 }
 
 /**
@@ -238,8 +283,14 @@ function saveCheckpoint(_state: LoopState): void {
   try {
     const physicsState = PhysicsWorld.serializeState();
     setItem(CHECKPOINT_KEY, JSON.stringify(physicsState));
-  } catch {
-    // PhysicsWorld may not be initialised yet during unit tests.
+  } catch (error: unknown) {
+    // Log the error so checkpoint failures are diagnosable.
+    // PhysicsWorld may not be initialised during early startup or unit tests,
+    // so this is non-fatal — but we never silently discard the information.
+    if (__DEV__) console.warn(
+      'GameLoop.saveCheckpoint: failed to persist physics state.',
+      error instanceof Error ? error.message : String(error),
+    );
   }
 }
 
@@ -380,7 +431,9 @@ function frame(state: LoopState, now: number): void {
       state.winLossState = 'won';
       state.config.bridge.winLossState.value = 'won';
       if (state.winCallback) {
-        state.winCallback();
+        try { state.winCallback(); } catch (e) {
+          if (__DEV__) console.warn('GameLoop: onWin callback threw:', e);
+        }
       }
       cancelRafLoop(state);
     });
@@ -461,6 +514,8 @@ function start(config: GameLoopConfig): void {
     // Wire config callbacks as defaults; can be overridden via onWin/onTimerExpire.
     winCallback: config.onWin,
     timerExpireCallback: config.onTimerExpire,
+    timerWarningFired: false,
+    timerCriticalFired: false,
   };
 
   // Set win/loss state on bridge.
@@ -491,6 +546,8 @@ function stop(): void {
   PhysicsWorld.destroy();
   WinCondition.reset();
   _loop = null;
+  _onTimerAmberCallback = null;
+  _onTimerCriticalCallback = null;
 }
 
 /**
@@ -559,6 +616,22 @@ function onTimerExpire(callback: () => void): void {
 }
 
 /**
+ * Register a callback fired when the timer enters amber warning zone.
+ * Used by GameScreen to wire audio.onTimerAmber() from useAudio.
+ */
+function setOnTimerAmberCallback(cb: (() => void) | null): void {
+  _onTimerAmberCallback = cb;
+}
+
+/**
+ * Register a callback fired when the timer enters critical zone.
+ * Used by GameScreen to wire audio.onTimerCritical() from useAudio.
+ */
+function setOnTimerCriticalCallback(cb: (() => void) | null): void {
+  _onTimerCriticalCallback = cb;
+}
+
+/**
  * Return a snapshot of current GameLoop state for debugging and UI binding.
  *
  * Requirements: 9.1
@@ -603,6 +676,8 @@ export const GameLoop = {
   onWin,
   onTimerExpire,
   getCurrentState,
+  setOnTimerAmberCallback,
+  setOnTimerCriticalCallback,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -649,10 +724,18 @@ export function startLoop(callback: () => void): void {
     _lightLoopLastTime = now;
     _lightLoopAccumulator += delta;
 
-    while (_lightLoopAccumulator >= FIXED_TIMESTEP_MS) {
+    // Cap iterations to prevent spiral-of-death (matches MAX_FRAME_LAG_MS / FIXED_TIMESTEP_MS)
+    const maxTicks = Math.ceil(MAX_FRAME_LAG_MS / FIXED_TIMESTEP_MS);
+    let ticksThisFrame = 0;
+    while (_lightLoopAccumulator >= FIXED_TIMESTEP_MS && ticksThisFrame < maxTicks) {
       callback();
       _lightLoopTickCount++;
       _lightLoopAccumulator -= FIXED_TIMESTEP_MS;
+      ticksThisFrame++;
+    }
+    // Discard excess accumulated time to prevent catch-up stutter
+    if (_lightLoopAccumulator > FIXED_TIMESTEP_MS) {
+      _lightLoopAccumulator = _lightLoopAccumulator % FIXED_TIMESTEP_MS;
     }
 
     _lightLoopRafId = requestAnimationFrame(tick);
@@ -690,6 +773,10 @@ export function getTickCount(): number {
 // Test-internal helpers (not part of the public API)
 // ---------------------------------------------------------------------------
 
+// These helpers are stripped from production builds via the __DEV__ guard.
+// In release builds the exported symbols are no-op stubs so import sites
+// remain valid but the code is dead-code-eliminated by Metro/Hermes.
+
 /**
  * @internal — for unit tests only.
  * Directly execute N physics ticks without rAF, advancing the loop state
@@ -697,54 +784,58 @@ export function getTickCount(): number {
  *
  * This allows deterministic testing without mocking requestAnimationFrame.
  */
-export function _testRunTicks(n: number, dt: number = FIXED_TIMESTEP_MS): void {
-  if (!_loop) {
-    throw new Error('GameLoop._testRunTicks: loop is not running');
-  }
-  const state = _loop;
-  const now = state.lastTime + n * dt;
-
-  state.accumulator += n * dt;
-  state.lastTime = now;
-
-  while (
-    state.accumulator >= FIXED_TIMESTEP_MS &&
-    state.winLossState === 'playing'
-  ) {
-    processInput(state);
-    PhysicsWorld.applyWaterForces(state.currentInputState);
-    PhysicsWorld.step(FIXED_TIMESTEP_MS);
-
-    const pegStates = PhysicsWorld.getPegStates();
-    WinCondition.checkWinCondition(pegStates, FIXED_TIMESTEP_MS, () => {
-      state.winLossState = 'won';
-      state.config.bridge.winLossState.value = 'won';
-      if (state.winCallback) {
-        state.winCallback();
+export const _testRunTicks: (n: number, dt?: number) => void = __DEV__
+  ? (n: number, dt: number = FIXED_TIMESTEP_MS): void => {
+      if (!_loop) {
+        throw new Error('GameLoop._testRunTicks: loop is not running');
       }
-      state.isRunning = false;
-    });
+      const state = _loop;
+      const now = state.lastTime + n * dt;
 
-    checkTimerExpiry(state, FIXED_TIMESTEP_MS);
-    checkAdaptiveAssistance(state);
-    persistStateIfCheckpoint(state, now);
+      state.accumulator += n * dt;
+      state.lastTime = now;
 
-    state.tickCount++;
-    state.accumulator -= FIXED_TIMESTEP_MS;
+      while (
+        state.accumulator >= FIXED_TIMESTEP_MS &&
+        state.winLossState === 'playing'
+      ) {
+        processInput(state);
+        PhysicsWorld.applyWaterForces(state.currentInputState);
+        PhysicsWorld.step(FIXED_TIMESTEP_MS);
 
-    if (state.winLossState !== 'playing') {
-      break;
+        const pegStates = PhysicsWorld.getPegStates();
+        WinCondition.checkWinCondition(pegStates, FIXED_TIMESTEP_MS, () => {
+          state.winLossState = 'won';
+          state.config.bridge.winLossState.value = 'won';
+          if (state.winCallback) {
+            state.winCallback();
+          }
+          state.isRunning = false;
+        });
+
+        checkTimerExpiry(state, FIXED_TIMESTEP_MS);
+        checkAdaptiveAssistance(state);
+        persistStateIfCheckpoint(state, now);
+
+        state.tickCount++;
+        state.accumulator -= FIXED_TIMESTEP_MS;
+
+        if (state.winLossState !== 'playing') {
+          break;
+        }
+      }
+
+      const alpha = state.accumulator / FIXED_TIMESTEP_MS;
+      writeToSharedValues(state, alpha);
     }
-  }
-
-  const alpha = state.accumulator / FIXED_TIMESTEP_MS;
-  writeToSharedValues(state, alpha);
-}
+  : (_n: number, _dt?: number): void => {
+      /* no-op in production */
+    };
 
 /**
  * @internal — for unit tests only.
  * Access raw internal state for assertions without going through the public API.
  */
-export function _testGetInternalState(): LoopState | null {
-  return _loop;
-}
+export const _testGetInternalState: () => LoopState | null = __DEV__
+  ? (): LoopState | null => _loop
+  : (): null => null;

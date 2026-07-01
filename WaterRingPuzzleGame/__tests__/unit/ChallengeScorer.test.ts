@@ -6,7 +6,7 @@
  *   - unsolvable challenge has low overall score (fails threshold)
  *   - all component scores are in [0.0, 1.0]
  *   - meetsThreshold = (overall >= 0.65)
- *   - variety and pacing placeholders are 0.8
+ *   - variety and pacing scores are computed from challenge configuration
  *   - QualityEvaluator.evaluate produces consistent results
  *   - quality formula weights sum to 1.0 and are applied correctly
  *
@@ -200,22 +200,26 @@ describe('scoreChallenge()', () => {
 
   // ── Placeholders ─────────────────────────────────────────────────────────────
 
-  it('variety score is always 0.8 (placeholder)', () => {
+  it('variety score reflects intrinsic challenge diversity', () => {
     const ring = makeRing({ colorId: 'red' });
     const peg = makePeg({ colorId: 'red' });
     const config = makeConfig([ring], [peg], 120);
     const result = scoreChallenge(config, FULLY_SOLVABLE);
 
-    expect(result.variety).toBe(0.8);
+    // A simple Classic config with 1 ring and no obstacles scores lower on variety.
+    expect(result.variety).toBeGreaterThanOrEqual(0.0);
+    expect(result.variety).toBeLessThanOrEqual(1.0);
+    expect(result.variety).toBeLessThan(0.8); // no longer inflated placeholder
   });
 
-  it('pacing score is always 0.8 (placeholder)', () => {
+  it('pacing score reflects timer headroom and ring count balance', () => {
     const ring = makeRing({ colorId: 'red' });
     const peg = makePeg({ colorId: 'red' });
     const config = makeConfig([ring], [peg], 120);
     const result = scoreChallenge(config, FULLY_SOLVABLE);
 
-    expect(result.pacing).toBe(0.8);
+    expect(result.pacing).toBeGreaterThanOrEqual(0.0);
+    expect(result.pacing).toBeLessThanOrEqual(1.0);
   });
 
   // ── meetsThreshold reflects overall vs QUALITY_THRESHOLD ─────────────────

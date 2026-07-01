@@ -19,6 +19,7 @@
 
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { DS } from '../constants/designSystem';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -39,9 +40,9 @@ const ARC_STROKE = 8;
 // const ARC_RADIUS = (ARC_SIZE - ARC_STROKE) / 2; // unused
 // const ARC_CIRCUMFERENCE = 2 * Math.PI * ARC_RADIUS; // unused
 
-const COLOUR_NORMAL = '#4FC3F7';
-const COLOUR_AMBER = '#FFB74D';
-const COLOUR_RED = '#EF5350';
+const COLOUR_NORMAL = DS.colors.info;
+const COLOUR_AMBER = DS.colors.warning;
+const COLOUR_RED = DS.colors.error;
 
 const AMBER_THRESHOLD = 0.3;
 const RED_THRESHOLD = 0.1;

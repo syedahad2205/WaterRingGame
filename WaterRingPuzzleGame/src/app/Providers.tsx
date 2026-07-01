@@ -20,6 +20,11 @@ import { AnalyticsService } from '@services/firebase/AnalyticsService';
 import { EconomyService } from '@features/economy/EconomyService';
 import { LeaderboardService } from '@features/social/LeaderboardService';
 import { ReplayStorageService } from '@features/replay/ReplayStorageService';
+import { PurchaseService } from '@features/economy/PurchaseService';
+import { AdService } from '../features/economy/AdService';
+import { syncManager } from '../services/sync/SyncManager';
+import { gameEventEmitter } from '../utils/GameEventEmitter';
+import { triggerHaptic } from '../constants/hapticPatterns';
 import { connectToEmulators } from '@services/firebase/emulatorConfig';
 
 // Connect Firebase to local emulators in dev / test environments.
@@ -77,6 +82,27 @@ const analyticsService = new AnalyticsService();
 const economyService = new EconomyService();
 const leaderboardService = new LeaderboardService();
 const replayService = new ReplayStorageService();
+
+// Initialize monetization services (non-blocking, fire-and-forget)
+PurchaseService.getInstance().initialize('').catch(() => {});
+AdService.getInstance().initialize().catch(() => {});
+
+// Start analytics flush timer and GameEventEmitter subscriptions
+analyticsService.start();
+
+// Start SyncManager periodic sync (flushes queued cloud operations every 30s).
+// The returned cleanup function is intentionally unused — sync runs for the app lifetime.
+syncManager.startPeriodicSync();
+
+// Listen for achievement_unlocked events to trigger haptics and SFX
+gameEventEmitter.on('achievement_unlocked', (payload: unknown) => {
+  triggerHaptic('achievement');
+  audioEngine.playSFX('achievement_unlock');
+  if (__DEV__) {
+    const data = payload as { id?: string; name?: string };
+    console.log('[Providers] Achievement unlocked:', data?.name ?? data?.id);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Provider component

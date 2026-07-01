@@ -54,11 +54,19 @@ const FUN_BASE_SCORE = 0.8;
 /** Fairness base score when a specific condition isn't fully met. */
 const FAIRNESS_BASE_SCORE = 0.7;
 
-/** Variety score: fixed placeholder (history context not available). */
-const VARIETY_PLACEHOLDER = 0.8;
+/** Weights for variety sub-components. */
+const VARIETY_WEIGHT_TEMPLATE = 0.30;
+const VARIETY_WEIGHT_COLOR = 0.25;
+const VARIETY_WEIGHT_SIZE = 0.25;
+const VARIETY_WEIGHT_OBSTACLE = 0.20;
 
-/** Pacing score: fixed placeholder. */
-const PACING_PLACEHOLDER = 0.8;
+/** Ideal timer utilization band for pacing: challenges should use 40%–70% of timer. */
+const PACING_TIMER_IDEAL_LOW = 0.40;
+const PACING_TIMER_IDEAL_HIGH = 0.70;
+
+/** Pacing ring count ideal range for engagement. */
+const PACING_RING_IDEAL_MIN = 2;
+const PACING_RING_IDEAL_MAX = 5;
 
 /** Difficulty threshold below which ring count is considered "reasonable". */
 const ND_RING_COUNT_THRESHOLD = 0.5;
@@ -203,27 +211,111 @@ function computeFairnessScore(config: ChallengeConfig): number {
 /**
  * VarietyScore (0.0–1.0)
  *
- * Always 0.8 as a placeholder. Real variety scoring requires knowledge of
- * the player's challenge history (recently seen templates, colors, layouts),
- * which is not available in the pure generator context.
+ * Measures the intrinsic variety within a single challenge configuration:
+ *   - Template complexity: non-Classic templates with special mechanics score higher.
+ *   - Color diversity: more distinct ring colors = more visual variety.
+ *   - Size diversity: more distinct ring size tiers = more gameplay variety.
+ *   - Obstacle presence: obstacles add spatial variety.
+ *
+ * Weighted sum:
+ *   0.30 × templateComplexity + 0.25 × colorDiversity
+ *   + 0.25 × sizeDiversity + 0.20 × obstaclePresence
  *
  * Requirements: 11.1 (pure function, no state access)
  */
-function computeVarietyScore(_config: ChallengeConfig): number {
-  return VARIETY_PLACEHOLDER;
+function computeVarietyScore(config: ChallengeConfig): number {
+  const { rings, obstacles, templateId } = config;
+  const requiredRings = rings.filter(r => !r.isDecoy);
+
+  // Template complexity: Classic = 0.4, templates with special mechanics score higher.
+  const hasSpecialMechanic =
+    templateId !== 'Classic' && templateId !== 'MultiplierRush';
+  const templateScore = hasSpecialMechanic ? 0.9 : 0.4;
+
+  // Color diversity: distinct colors among all rings (including decoys).
+  const distinctColors = new Set(rings.map(r => r.colorId)).size;
+  // 1 color = 0.3, 2 = 0.5, 3 = 0.7, 4 = 0.85, 5+ = 1.0
+  const colorScore = Math.min(1.0, 0.15 + distinctColors * 0.20);
+
+  // Size diversity: distinct size tiers among required rings.
+  const distinctSizes = new Set(requiredRings.map(r => r.sizeCategory)).size;
+  const sizeScore = SIZE_TIER_SCORES[Math.min(distinctSizes, 3)] ?? 0.4;
+
+  // Obstacle presence: having obstacles adds spatial variety.
+  const obstacleScore = obstacles.length > 0
+    ? Math.min(1.0, 0.6 + obstacles.length * 0.15)
+    : 0.3;
+
+  const variety =
+    VARIETY_WEIGHT_TEMPLATE * templateScore +
+    VARIETY_WEIGHT_COLOR * colorScore +
+    VARIETY_WEIGHT_SIZE * sizeScore +
+    VARIETY_WEIGHT_OBSTACLE * obstacleScore;
+
+  return Math.min(1.0, Math.max(0.0, variety));
 }
 
 /**
  * PacingScore (0.0–1.0)
  *
- * Always 0.8 as a placeholder. Real pacing scoring requires awareness of
- * surrounding challenge numbers and player session history, which are not
- * available during pure generation.
+ * Evaluates whether the challenge's internal pacing feels well-balanced:
+ *   - Timer headroom: the estimated solve time should use 40%–70% of the
+ *     total timer. Too tight feels frustrating; too loose feels boring.
+ *   - Ring count balance: 2–5 required rings is the ideal engagement band.
+ *     Fewer feels trivial; more feels overwhelming.
+ *   - Difficulty alignment: normalized difficulty should roughly match the
+ *     mechanical complexity (ring count + obstacle count) to avoid spikes.
+ *
+ * Final pacing = 0.40 × timerHeadroom + 0.35 × ringCountBalance
+ *              + 0.25 × difficultyAlignment
  *
  * Requirements: 11.1 (pure function, no state access)
  */
-function computePacingScore(_config: ChallengeConfig): number {
-  return PACING_PLACEHOLDER;
+function computePacingScore(config: ChallengeConfig): number {
+  const { rings, timer, intelligenceMetadata, normalizedDifficulty: nd, obstacles } = config;
+  const requiredRings = rings.filter(r => !r.isDecoy);
+  const totalSeconds = timer.totalSeconds;
+
+  // Timer headroom: ideal when estimated solve uses 40%–70% of timer.
+  let timerHeadroomScore = 0.0;
+  if (totalSeconds > 0) {
+    const utilRatio = intelligenceMetadata.estimatedSolveTimeSecs / totalSeconds;
+    if (utilRatio >= PACING_TIMER_IDEAL_LOW && utilRatio <= PACING_TIMER_IDEAL_HIGH) {
+      timerHeadroomScore = 1.0;
+    } else if (utilRatio < PACING_TIMER_IDEAL_LOW) {
+      timerHeadroomScore = Math.max(0, utilRatio / PACING_TIMER_IDEAL_LOW);
+    } else {
+      const excess = utilRatio - PACING_TIMER_IDEAL_HIGH;
+      const range = 1.0 - PACING_TIMER_IDEAL_HIGH;
+      timerHeadroomScore = Math.max(0, 1.0 - excess / range);
+    }
+  }
+
+  // Ring count balance: 2–5 required rings is ideal.
+  const ringCount = requiredRings.length;
+  let ringCountBalance: number;
+  if (ringCount >= PACING_RING_IDEAL_MIN && ringCount <= PACING_RING_IDEAL_MAX) {
+    ringCountBalance = 1.0;
+  } else if (ringCount < PACING_RING_IDEAL_MIN) {
+    ringCountBalance = ringCount === 1 ? 0.5 : 0.3;
+  } else {
+    // Above 5: gradually decrease, floor at 0.3.
+    ringCountBalance = Math.max(0.3, 1.0 - (ringCount - PACING_RING_IDEAL_MAX) * 0.15);
+  }
+
+  // Difficulty alignment: mechanical complexity should roughly match nd.
+  // Complexity proxy: (requiredRings + obstacles) normalized to [0, 1].
+  const complexityProxy = Math.min(1.0, (requiredRings.length + obstacles.length) / 8);
+  const alignmentDelta = Math.abs(nd - complexityProxy);
+  // Perfect alignment = 1.0, max divergence (1.0) = 0.2.
+  const difficultyAlignment = Math.max(0.2, 1.0 - alignmentDelta);
+
+  const pacing =
+    0.40 * timerHeadroomScore +
+    0.35 * ringCountBalance +
+    0.25 * difficultyAlignment;
+
+  return Math.min(1.0, Math.max(0.0, pacing));
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

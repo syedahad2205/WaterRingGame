@@ -64,7 +64,7 @@ function logChecksumFailure(key: string, stored: number, expected: number): void
     crashlytics().recordError(new Error(message));
   } catch {
     // Crashlytics unavailable — log to console so the issue is still visible.
-    console.error(message);
+    if (__DEV__) console.error(message);
   }
 }
 
@@ -102,14 +102,14 @@ export function getItem(key: string): string | null {
     entry = JSON.parse(raw) as StoredEntry;
   } catch {
     // Stored data is not valid JSON — treat as corrupt.
-    console.error(`[MMKVStorage] Failed to parse stored entry for key "${key}". Discarding.`);
+    if (__DEV__) console.error(`[MMKVStorage] Failed to parse stored entry for key "${key}". Discarding.`);
     mmkv.delete(key);
     return null;
   }
 
   if (typeof entry.value !== 'string' || typeof entry.checksum !== 'number') {
     // Malformed entry — treat as corrupt.
-    console.error(`[MMKVStorage] Malformed entry schema for key "${key}". Discarding.`);
+    if (__DEV__) console.error(`[MMKVStorage] Malformed entry schema for key "${key}". Discarding.`);
     mmkv.delete(key);
     return null;
   }
@@ -183,13 +183,13 @@ function sliceGetItem(store: MMKV, key: string): string | null {
   try {
     entry = JSON.parse(raw) as StoredEntry;
   } catch {
-    console.error(`[MMKVStorage] Failed to parse stored entry for key "${key}". Discarding.`);
+    if (__DEV__) console.error(`[MMKVStorage] Failed to parse stored entry for key "${key}". Discarding.`);
     store.delete(key);
     return null;
   }
 
   if (typeof entry.value !== 'string' || typeof entry.checksum !== 'number') {
-    console.error(`[MMKVStorage] Malformed entry schema for key "${key}". Discarding.`);
+    if (__DEV__) console.error(`[MMKVStorage] Malformed entry schema for key "${key}". Discarding.`);
     store.delete(key);
     return null;
   }

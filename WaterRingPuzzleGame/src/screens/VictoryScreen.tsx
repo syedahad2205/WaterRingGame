@@ -3,27 +3,25 @@
  *
  * Modal screen shown when the player wins a challenge.
  *
- * Animation sequence (Requirement 34.3, 37.1) — total ≥ 4 seconds:
- *   Step 1 (0ms):       Camera-like zoom — panel scales from 0.85 to 1 over 400ms ease-out
- *   Step 2 (300ms):     Screen flash — brief white overlay flash (200ms)
+ * Animation sequence (Requirement 34.3, 37.1) -- total >= 4 seconds:
+ *   Step 1 (0ms):       Camera-like zoom -- panel scales from 0.85 to 1 over 400ms ease-out
+ *   Step 2 (300ms):     Screen flash -- brief white overlay flash (200ms)
  *   Step 3 (500ms):     Modal visible; stars flip one-by-one (250ms each, 100ms gap)
- *   Step 4 (after stars): Coins arc label appears with trail animation (600–800ms)
+ *   Step 4 (after stars): Coins arc label appears with trail animation (600-800ms)
  *   Step 5 (after coins): XP bar shimmer fill (600ms)
  *   Total: ~4.2 seconds minimum
  *
- * Reduced-motion: skip steps 1–2; fade in modal; no star flip animation.
+ * Reduced-motion: skip steps 1-2; fade in modal; no star flip animation.
  *
  * Requirements: 34.3, 37.1
  * Task: 8.3.3
  */
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import {
-  Pressable,
   StyleSheet,
   Text,
   View,
-  AccessibilityInfo,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -32,10 +30,21 @@ import Animated, {
   withDelay,
   withSequence,
   Easing,
+  runOnJS,
+  useAnimatedReaction,
 } from 'react-native-reanimated';
+import { DS } from '@/constants/designSystem';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { Icon } from '@/components/icons/GameIcons';
+import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
+import { ProgressBar } from '@/components/ui/ProgressBar';
+import { triggerHaptic } from '@/constants/hapticPatterns';
+import { audioEngine } from '@/features/audio/AudioEngine';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 // ---------------------------------------------------------------------------
-// Timing constants (exported for unit tests — Task 8.3.3a)
+// Timing constants (exported for unit tests -- Task 8.3.3a)
 // ---------------------------------------------------------------------------
 
 export const VICTORY_TIMING = {
@@ -75,16 +84,26 @@ function VictoryStar({ active, delay, reducedMotion }: StarProps): React.JSX.Ele
     if (!active) {
       return;
     }
+    // Fire haptic + SFX when star animates in
+    const hapticTimeout = setTimeout(() => {
+      triggerHaptic('reward');
+      try {
+        audioEngine.getSFXManager().play('achievement_unlock');
+      } catch {
+        // SFX failure is non-fatal
+      }
+    }, delay);
     if (reducedMotion) {
       opacity.value = withDelay(delay, withTiming(1, { duration: 200 }));
-      return;
+      return () => clearTimeout(hapticTimeout);
     }
-    // Flip from 90° (edge-on) to 0° (face-on) over 250ms — "flip into view"
+    // Flip from 90deg (edge-on) to 0deg (face-on) over 250ms -- "flip into view"
     opacity.value = withDelay(delay, withTiming(1, { duration: 50 }));
     rotateY.value = withDelay(delay, withTiming(0, {
       duration: VICTORY_TIMING.starFlipMs,
       easing: Easing.out(Easing.back(1.3)),
     }));
+    return () => clearTimeout(hapticTimeout);
   }, [active, delay, opacity, rotateY, reducedMotion]);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -93,9 +112,13 @@ function VictoryStar({ active, delay, reducedMotion }: StarProps): React.JSX.Ele
   }));
 
   return (
-    <Animated.Text style={[styles.starIcon, animStyle]} accessible={false}>
-      {active ? '★' : '☆'}
-    </Animated.Text>
+    <Animated.View style={[styles.starIcon, animStyle]} accessible={false}>
+      <Icon
+        name={active ? 'star-filled' : 'star-empty'}
+        size={44}
+        color={DS.colors.accent}
+      />
+    </Animated.View>
   );
 }
 
@@ -123,7 +146,7 @@ interface VictoryScreenProps {
 // ---------------------------------------------------------------------------
 
 /**
- * VictoryScreen — animated victory result modal.
+ * VictoryScreen -- animated victory result modal.
  *
  * Requirements: 34.3, 37.1
  * Task: 8.3.3
@@ -135,20 +158,39 @@ export default function VictoryScreen({ navigation, route }: VictoryScreenProps)
   const xpEarned = route?.params?.xpEarned ?? 100;
   const challengeNumber = route?.params?.challengeNumber ?? 1;
 
-  const isReducedMotion = useRef(false);
+  const reducedMotion = useReducedMotion();
+  const hasStartedSequence = useRef(false);
+  const coinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Shared values ─────────────────────────────────────────────────────────
+  // XP progress state driven by animation timing
+  const [xpProgress, setXpProgress] = useState(0);
+
+  // -- Shared values --------------------------------------------------------
   const panelScale = useSharedValue(0.85);
   const panelOpacity = useSharedValue(0);
   const flashOpacity = useSharedValue(0);
   const coinsOpacity = useSharedValue(0);
   const xpBarWidth = useSharedValue(0);
 
-  useEffect((): void => {
-    AccessibilityInfo.isReduceMotionEnabled().then((reduced): void => {
-      isReducedMotion.current = reduced;
-      startSequence(reduced);
-    });
+  // Bridge xpBarWidth shared value to React state for ProgressBar
+  useAnimatedReaction(
+    () => xpBarWidth.value,
+    (currentValue) => {
+      runOnJS(setXpProgress)(currentValue);
+    },
+  );
+
+  useEffect((): (() => void) => {
+    if (!hasStartedSequence.current) {
+      hasStartedSequence.current = true;
+      startSequence(reducedMotion);
+    }
+    return (): void => {
+      // Clean up pending timeouts on unmount to prevent memory leaks
+      if (coinTimeoutRef.current) {
+        clearTimeout(coinTimeoutRef.current);
+      }
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -185,6 +227,16 @@ export default function VictoryScreen({ navigation, route }: VictoryScreenProps)
       stars * (VICTORY_TIMING.starFlipMs + VICTORY_TIMING.starGapMs);
     coinsOpacity.value = withDelay(coinsDelay, withTiming(1, { duration: 400 }));
 
+    // Coin SFX + haptic when coins label appears
+    coinTimeoutRef.current = setTimeout(() => {
+      triggerHaptic('coinEarned');
+      try {
+        audioEngine.getSFXManager().play('coin_earn');
+      } catch {
+        // SFX failure is non-fatal
+      }
+    }, coinsDelay);
+
     // Step 5: XP bar fill (after coins arc)
     xpBarWidth.value = withDelay(
       coinsDelay + VICTORY_TIMING.coinsArcMs,
@@ -206,10 +258,6 @@ export default function VictoryScreen({ navigation, route }: VictoryScreenProps)
     transform: [{ translateY: coinsOpacity.value * 0 - (1 - coinsOpacity.value) * 10 }],
   }));
 
-  const xpBarStyle = useAnimatedStyle(() => ({
-    flex: xpBarWidth.value,
-  }));
-
   const starDelays = starAnimationDelays(stars);
 
   return (
@@ -222,76 +270,94 @@ export default function VictoryScreen({ navigation, route }: VictoryScreenProps)
       />
 
       <Animated.View
-        style={[styles.panel, panelStyle]}
+        style={[styles.panelWrapper, panelStyle]}
         accessible={true}
         accessibilityRole="alert"
         accessibilityLabel={`Victory! ${stars} star${stars !== 1 ? 's' : ''} earned. ${coinsEarned} coins earned.`}
         accessibilityLiveRegion="polite"
       >
-        <View style={styles.bg} />
+        <GlassCard
+          variant="frosted"
+          glow={DS.colors.accent}
+          noAnimation
+          style={styles.panel}
+        >
+          <View style={styles.content}>
+            {/* Header */}
+            <Icon
+              name="trophy"
+              size={56}
+              color={DS.colors.accent}
+              accessibilityLabel="Trophy"
+            />
+            <Text style={styles.title} accessibilityRole="header">
+              Challenge Complete!
+            </Text>
 
-        <View style={styles.content}>
-          {/* Header */}
-          <Text style={styles.titleEmoji} accessible={false}>🎉</Text>
-          <Text style={styles.title} accessibilityRole="header">Challenge Complete!</Text>
+            {/* Stars row (Step 3) */}
+            <View style={styles.starsRow} accessibilityElementsHidden={true}>
+              {([1, 2, 3] as const).map((s) => (
+                <VictoryStar
+                  key={s}
+                  active={s <= stars}
+                  delay={starDelays[s - 1] ?? 0}
+                  reducedMotion={reducedMotion}
+                />
+              ))}
+            </View>
 
-          {/* Stars row (Step 3) */}
-          <View style={styles.starsRow} accessibilityElementsHidden={true}>
-            {([1, 2, 3] as const).map((s) => (
-              <VictoryStar
-                key={s}
-                active={s <= stars}
-                delay={starDelays[s - 1] ?? 0}
-                reducedMotion={isReducedMotion.current}
+            {/* Coins arc (Step 4) */}
+            <Animated.View style={[styles.coinsRow, coinsStyle]}>
+              <Icon
+                name="coin"
+                size={28}
+                color={DS.colors.accent}
+                accessibilityLabel="Coins"
               />
-            ))}
-          </View>
+              <AnimatedNumber
+                value={coinsEarned}
+                prefix="+"
+                style={styles.coinsLabel}
+                accessibilityLabel={`${coinsEarned} coins earned`}
+              />
+            </Animated.View>
 
-          {/* Coins arc (Step 4) */}
-          <Animated.View style={[styles.coinsRow, coinsStyle]}>
-            <Text style={styles.coinsIcon} accessible={false}>💰</Text>
-            <Text
-              style={styles.coinsLabel}
-              accessible={true}
-              accessibilityLabel={`${coinsEarned} coins earned`}
-            >
-              +{coinsEarned}
-            </Text>
-          </Animated.View>
+            {/* XP bar (Step 5) */}
+            <View style={styles.xpSection}>
+              <ProgressBar
+                value={xpProgress}
+                size="lg"
+                color={DS.colors.secondary}
+                showLabel
+                label={`+${xpEarned} XP`}
+                style={styles.xpBar}
+                accessibilityLabel={`${xpEarned} XP earned`}
+              />
+            </View>
 
-          {/* XP bar (Step 5) */}
-          <View style={styles.xpSection}>
-            <Text style={styles.xpLabel} accessible={true} accessibilityLabel={`${xpEarned} XP earned`}>
-              +{xpEarned} XP
-            </Text>
-            <View style={styles.xpBarOuter}>
-              <Animated.View style={[styles.xpBarFill, xpBarStyle]} />
-              <View style={styles.xpBarRemaining} />
+            {/* CTAs */}
+            <View style={styles.buttonRow}>
+              <GlassButton
+                label="Next Challenge"
+                variant="primary"
+                iconRight="play"
+                size="lg"
+                onPress={(): void => navigation?.navigate('Game', { challengeNumber: challengeNumber + 1 })}
+                accessibilityLabel="Play next challenge"
+                style={styles.buttonFlex}
+              />
+              <GlassButton
+                label="Home"
+                variant="secondary"
+                iconLeft="home"
+                size="lg"
+                onPress={(): void => navigation?.navigate('MainTabs')}
+                accessibilityLabel="Go to Home"
+                style={styles.buttonFlex}
+              />
             </View>
           </View>
-
-          {/* CTAs */}
-          <View style={styles.buttonRow}>
-            <Pressable
-              style={({ pressed }: { pressed: boolean }) => [styles.primaryButton, pressed ? styles.buttonPressed : undefined]}
-              onPress={(): void => navigation?.navigate('Game', { challengeNumber: challengeNumber + 1 })}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel="Play next challenge"
-            >
-              <Text style={styles.primaryButtonLabel}>Next ▶</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }: { pressed: boolean }) => [styles.secondaryButton, pressed ? styles.buttonPressed : undefined]}
-              onPress={(): void => navigation?.navigate('MainTabs')}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel="Go to Home"
-            >
-              <Text style={styles.secondaryButtonLabel}>Home</Text>
-            </Pressable>
-          </View>
-        </View>
+        </GlassCard>
       </Animated.View>
     </View>
   );
@@ -304,122 +370,65 @@ export default function VictoryScreen({ navigation, route }: VictoryScreenProps)
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(5, 15, 30, 0.90)',
+    backgroundColor: 'rgba(10,14,26,0.88)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   flashOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#fff',
-    zIndex: 100,
+    backgroundColor: DS.colors.text.primary,
+    zIndex: DS.zIndex.modal,
+  },
+  panelWrapper: {
+    width: 320,
   },
   panel: {
-    width: 320,
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,215,64,0.35)',
-  },
-  bg: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 28, 55, 0.97)',
+    width: '100%',
   },
   content: {
-    padding: 28,
+    padding: DS.spacing.xxl,
     alignItems: 'center',
-    gap: 14,
-  },
-  titleEmoji: {
-    fontSize: 44,
+    gap: DS.spacing.md,
   },
   title: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '800',
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.title2,
+    fontWeight: DS.typography.weight.heavy,
+    letterSpacing: DS.typography.letterSpacing.title2,
     textAlign: 'center',
   },
   starsRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginVertical: 8,
+    gap: DS.spacing.sm,
+    marginVertical: DS.spacing.sm,
   },
   starIcon: {
-    fontSize: 44,
-    color: '#FFD740',
+    // Container for the Icon component inside VictoryStar
   },
   coinsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  coinsIcon: {
-    fontSize: 24,
+    gap: DS.spacing.sm,
   },
   coinsLabel: {
-    color: '#FFD740',
-    fontSize: 26,
-    fontWeight: '800',
+    color: DS.colors.accent,
+    fontSize: DS.typography.size.title3,
+    fontWeight: DS.typography.weight.heavy,
   },
   xpSection: {
     width: '100%',
-    gap: 6,
+    gap: DS.spacing.xs,
   },
-  xpLabel: {
-    color: '#81D4FA',
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  xpBarOuter: {
-    flexDirection: 'row',
+  xpBar: {
     width: '100%',
-    height: 12,
-    borderRadius: 6,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  xpBarFill: {
-    height: '100%',
-    backgroundColor: '#4FC3F7',
-    borderRadius: 6,
-  },
-  xpBarRemaining: {
-    flex: 0,
-    height: '100%',
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    gap: DS.spacing.md,
+    marginTop: DS.spacing.sm,
     width: '100%',
   },
-  primaryButton: {
+  buttonFlex: {
     flex: 1,
-    backgroundColor: '#4FC3F7',
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  primaryButtonLabel: {
-    color: '#0a2342',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  secondaryButton: {
-    flex: 1,
-    backgroundColor: 'rgba(79,195,247,0.12)',
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(79,195,247,0.3)',
-  },
-  secondaryButtonLabel: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonPressed: {
-    opacity: 0.75,
   },
 });

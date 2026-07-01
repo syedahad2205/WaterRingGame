@@ -135,27 +135,45 @@ export const useEconomyStore = create<EconomySlice>()(
       ...DEFAULT_STATE,
 
       creditCoins: (amount: number, source: string, txId?: string): void => {
-        if (amount <= 0) return;
-        const tx = buildTransaction('earn', amount, source, txId);
-        set((state) => ({
-          coinBalance: state.coinBalance + amount,
-          transactionHistory: cappedHistory(state.transactionHistory, tx),
-        }));
+        // Guard against NaN, Infinity, negative, and non-integer values.
+        if (!Number.isFinite(amount) || amount <= 0) return;
+        const safeAmount = Math.floor(amount);
+        if (safeAmount <= 0) return;
+        const tx = buildTransaction('earn', safeAmount, source, txId);
+        set((state) => {
+          const newBalance = state.coinBalance + safeAmount;
+          // Guard against overflow past Number.MAX_SAFE_INTEGER.
+          if (newBalance > Number.MAX_SAFE_INTEGER) return state;
+          return {
+            coinBalance: newBalance,
+            transactionHistory: cappedHistory(state.transactionHistory, tx),
+          };
+        });
       },
 
       debitCoins: (amount: number, source: string): boolean => {
-        const { coinBalance } = get();
-        if (amount <= 0) return false;
-        // Reject if balance would go negative — Property 14.
-        if (coinBalance < amount) return false;
+        // Guard against NaN, Infinity, negative, and non-integer values.
+        if (!Number.isFinite(amount) || amount <= 0) return false;
+        const safeAmount = Math.floor(amount);
+        if (safeAmount <= 0) return false;
 
-        const tx = buildTransaction('spend', amount, source);
-        set((state) => ({
-          // Guard once more against concurrent state access.
-          coinBalance: Math.max(0, state.coinBalance - amount),
-          transactionHistory: cappedHistory(state.transactionHistory, tx),
-        }));
-        return true;
+        // Perform the balance check AND deduction inside the same set()
+        // callback to eliminate the TOCTOU race between get() and set().
+        let succeeded = false;
+        set((state) => {
+          if (state.coinBalance < safeAmount) {
+            // Insufficient balance — return state unchanged.
+            succeeded = false;
+            return state;
+          }
+          const tx = buildTransaction('spend', safeAmount, source);
+          succeeded = true;
+          return {
+            coinBalance: Math.max(0, state.coinBalance - safeAmount),
+            transactionHistory: cappedHistory(state.transactionHistory, tx),
+          };
+        });
+        return succeeded;
       },
 
       recordTransaction: (tx: Transaction): void => {

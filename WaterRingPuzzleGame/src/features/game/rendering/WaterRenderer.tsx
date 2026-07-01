@@ -24,12 +24,12 @@
  * Requirements: 38.1, 4.3, 41.3, 41.4, 41.5
  */
 
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import { useSharedValue, useFrameCallback } from 'react-native-reanimated';
 
 import { computeWaterSurfaceY, WAVE_CONFIGS } from './waterSurface';
-import { getWaterShader } from './WaterShader';
+import { getWaterShader, hexToRgbFloat } from './WaterShader';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,18 +118,18 @@ export default function WaterRenderer({
    */
   const isDirty = isActive;
 
+  // Reset the timestamp anchor when pausing so the first frame after resume
+  // does not produce a huge dt from the stale timestamp.
+  if (!isDirty) {
+    lastTimestampRef.current = null;
+  }
+
   // ---------------------------------------------------------------------------
   // Frame callback — advances elapsed time
   // ---------------------------------------------------------------------------
 
   useFrameCallback(
     (frameInfo) => {
-      if (!isDirty) {
-        // Surface is frozen — do not advance time.
-        lastTimestampRef.current = null;
-        return;
-      }
-
       const now = frameInfo.timestamp; // ms
       if (lastTimestampRef.current === null) {
         lastTimestampRef.current = now;
@@ -142,7 +142,7 @@ export default function WaterRenderer({
       // Accumulate elapsed time (wrapping at a large value to avoid float drift).
       elapsedSeconds.value = (elapsedSeconds.value + dtSeconds) % 10000;
     },
-    true, // isActive flag for the frame callback itself
+    isDirty, // Only run the frame callback when active (Requirement 4.3)
   );
 
   // ---------------------------------------------------------------------------
@@ -191,6 +191,23 @@ export default function WaterRenderer({
 
   const shaderSource = getWaterShader({ themeId, waterColor });
 
+  /**
+   * Compile the RuntimeEffect once and cache it.  Re-compiles only when the
+   * shader source string changes (theme switch) — not every frame.
+   */
+  const runtimeEffect = useMemo(() => {
+    if (shaderSource === null) return null;
+    try {
+      return Skia.RuntimeEffect.Make(shaderSource);
+    } catch {
+      // Shader compilation failed — will fall back to solid colour.
+      return null;
+    }
+  }, [shaderSource]);
+
+  /** Pre-compute the tint RGB tuple; only changes when waterColor prop changes. */
+  const tintRgb = useMemo(() => hexToRgbFloat(waterColor), [waterColor]);
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -204,21 +221,15 @@ export default function WaterRenderer({
   paint.setColor(Skia.Color(waterColor));
   paint.setAntiAlias(true);
 
-  // If a shader is available try to apply it; fall back gracefully on error.
-  if (shaderSource !== null) {
-    try {
-      const runtimeEffect = Skia.RuntimeEffect.Make(shaderSource);
-      if (runtimeEffect) {
-        const shader = runtimeEffect.makeShader([
-          t, // time uniform
-          1.0, // brightness uniform
-          0.3, // causticSpeed uniform
-        ]);
-        paint.setShader(shader);
-      }
-    } catch {
-      // Shader compilation failed — paint remains a solid colour (fallback).
-    }
+  // If a compiled shader is available, apply it with all required uniforms.
+  if (runtimeEffect) {
+    const shader = runtimeEffect.makeShader([
+      t,            // time uniform
+      1.0,          // brightness uniform
+      0.3,          // causticSpeed uniform
+      ...tintRgb,   // tint uniform (float3 → 3 floats)
+    ]);
+    paint.setShader(shader);
   }
 
   return (

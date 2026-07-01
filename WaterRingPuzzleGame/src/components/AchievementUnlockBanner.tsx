@@ -22,7 +22,6 @@ import {
   StyleSheet,
   Text,
   View,
-  AccessibilityInfo,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -34,6 +33,9 @@ import Animated, {
   runOnJS,
   Easing,
 } from 'react-native-reanimated';
+import { DS } from '../constants/designSystem';
+import { Icon, type IconName } from './icons/GameIcons';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -68,8 +70,8 @@ export interface AchievementUnlockBannerProps {
   title: string;
   /** Short description */
   description: string;
-  /** Emoji icon to show */
-  icon?: string;
+  /** Icon name from GameIcons */
+  iconName?: IconName;
   /** Called when the auto-dismiss or tap-dismiss sequence completes */
   onDismiss: () => void;
   /** Called at the moment the banner becomes visible (for particle burst) */
@@ -90,7 +92,7 @@ export interface AchievementUnlockBannerProps {
 export default function AchievementUnlockBanner({
   title,
   description,
-  icon = '🏆',
+  iconName = 'trophy',
   onDismiss,
   onAppear,
 }: AchievementUnlockBannerProps): React.JSX.Element {
@@ -98,13 +100,7 @@ export default function AchievementUnlockBanner({
   const translateY = useSharedValue(-BANNER_HEIGHT - 20);
   const opacity = useSharedValue(0);
   const isDismissed = useRef(false);
-  const isReducedMotion = useRef(false);
-
-  useEffect((): void => {
-    AccessibilityInfo.isReduceMotionEnabled().then((reduced): void => {
-      isReducedMotion.current = reduced;
-    });
-  }, []);
+  const reducedMotion = useReducedMotion();
 
   const triggerDismiss = useCallback((): void => {
     if (isDismissed.current) {
@@ -115,7 +111,7 @@ export default function AchievementUnlockBanner({
   }, [onDismiss]);
 
   useEffect((): (() => void) => {
-    if (isReducedMotion.current) {
+    if (reducedMotion) {
       // Reduced-motion: fade in/out instead of slide
       opacity.value = withSequence(
         withTiming(1, { duration: 300, easing: Easing.out(Easing.ease) }),
@@ -174,14 +170,14 @@ export default function AchievementUnlockBanner({
         accessibilityLabel="Dismiss achievement notification"
       >
         <View style={styles.iconContainer}>
-          <Text style={styles.icon} accessible={false}>{icon}</Text>
+          <Icon name={iconName} size={28} color={DS.colors.accent} />
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.achievementLabel} accessible={false}>Achievement Unlocked</Text>
           <Text style={styles.title} accessible={false} numberOfLines={1}>{title}</Text>
           <Text style={styles.description} accessible={false} numberOfLines={1}>{description}</Text>
         </View>
-        <Text style={styles.dismissHint} accessible={false}>✕</Text>
+        <Icon name="close" size={14} color={DS.colors.text.tertiary} />
       </Pressable>
     </Animated.View>
   );
@@ -195,26 +191,23 @@ const styles = StyleSheet.create({
   banner: {
     position: 'absolute',
     top: 0,
-    left: 16,
-    right: 16,
+    left: DS.spacing.lg,
+    right: DS.spacing.lg,
     height: BANNER_HEIGHT,
     backgroundColor: 'rgba(15, 38, 70, 0.96)',
-    borderRadius: 16,
+    borderRadius: DS.radius.lg,
     borderWidth: 1.5,
     borderColor: 'rgba(255,215,64,0.5)',
-    shadowColor: '#FFD740',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 12,
-    zIndex: 9999,
+    ...DS.shadows.lg,
+    shadowColor: DS.colors.accent,
+    zIndex: DS.zIndex.toast,
   },
   pressable: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: DS.spacing.lg,
+    gap: DS.spacing.md,
   },
   iconContainer: {
     width: 44,
@@ -224,31 +217,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  icon: {
-    fontSize: 24,
-  },
   textContainer: {
     flex: 1,
     gap: 1,
   },
   achievementLabel: {
-    color: '#FFD740',
-    fontSize: 10,
-    fontWeight: '700',
+    color: DS.colors.accent,
+    fontSize: DS.typography.size.caption2,
+    fontWeight: DS.typography.weight.bold,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   title: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.footnote,
+    fontWeight: DS.typography.weight.bold,
   },
   description: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
-  },
-  dismissHint: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 14,
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.caption1,
   },
 });

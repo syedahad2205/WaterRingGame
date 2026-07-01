@@ -13,17 +13,30 @@ export class CoinLedger {
   private salt: string;
 
   constructor(salt = 'water-ring-v1-global') {
+    // Guard: reject empty/undefined salt which would make HMAC trivially forgeable.
+    if (!salt || typeof salt !== 'string' || salt.length === 0) {
+      throw new Error('[CoinLedger] HMAC salt must be a non-empty string.');
+    }
     this.salt = salt;
   }
 
   sign(entry: Omit<LedgerEntry, 'signature'>): LedgerEntry {
+    // Validate amount before signing to prevent NaN/Infinity in the ledger.
+    if (!Number.isFinite(entry.amount) || entry.amount < 0) {
+      throw new Error(`[CoinLedger] Invalid amount: ${entry.amount}`);
+    }
     const payload = CoinLedger.buildSignaturePayload(entry);
     const signature = CryptoJS.HmacSHA256(payload, this.salt).toString();
     return { ...entry, signature };
   }
 
   verify(entry: LedgerEntry): boolean {
+    // Reject entries with non-finite amounts — they cannot have valid signatures.
+    if (!Number.isFinite(entry.amount) || entry.amount < 0) {
+      return false;
+    }
     const { signature, ...rest } = entry;
+    if (!signature || typeof signature !== 'string') return false;
     const expected = CryptoJS.HmacSHA256(
       CoinLedger.buildSignaturePayload(rest),
       this.salt,

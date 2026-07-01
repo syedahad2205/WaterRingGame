@@ -1,22 +1,4 @@
-/**
- * React Native 0.73 — settings.gradle
- *
- * Uses the new @react-native/gradle-plugin (0.73+) for auto-linking.
- * The old `native_modules.gradle` approach is NOT used — the
- * com.facebook.react.settings plugin replaces it entirely.
- */
-pluginManagement {
-    includeBuild("../node_modules/@react-native/gradle-plugin")
-}
-
-plugins {
-    id("com.facebook.react.settings")
-}
-
-extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
-    // Root of the project — default is one level up from /android
-    // ex.root = file("../")
-}
-
 rootProject.name = 'WaterRingPuzzleGame'
+apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
 include ':app'
+includeBuild('../node_modules/@react-native/gradle-plugin')

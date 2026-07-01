@@ -49,7 +49,7 @@ export class ChallengeShareService {
       ? this.buildReplayLink(replayId)
       : this.buildChallengeLink(challengeNumber);
 
-    const starsText = stars ? '⭐'.repeat(stars) : '';
+    const starsText = stars ? '*'.repeat(stars) : '';
     const scoreText = typeof score === 'number' ? ` with ${score} points` : '';
     const message = [
       `I just completed Water Ring Challenge #${challengeNumber}${scoreText}!`,

@@ -60,6 +60,30 @@ export interface RemoteConfigValues {
   max_active_bubbles: number;
   /** Maximum simultaneous ripple effects */
   max_active_ripples: number;
+
+  // Ad config (synced to AdService)
+  /** Maximum rewarded ad views per day */
+  ad_rewarded_daily_limit: number;
+  /** Maximum interstitial ad views per day */
+  ad_interstitial_daily_limit: number;
+  /** Cooldown between rewarded ads in ms */
+  ad_rewarded_cooldown_ms: number;
+  /** Cooldown between interstitial ads in ms */
+  ad_interstitial_cooldown_ms: number;
+  /** Show interstitial after every N games */
+  ad_interstitial_game_interval: number;
+  /** Coins rewarded per rewarded ad view */
+  ad_rewarded_coin_amount: number;
+
+  // Economy config (synced to PurchaseService)
+  /** Coins granted for small coin pack */
+  coin_pack_small_amount: number;
+  /** Coins granted for medium coin pack */
+  coin_pack_medium_amount: number;
+  /** Coins granted for large coin pack */
+  coin_pack_large_amount: number;
+  /** Coins granted for XL coin pack */
+  coin_pack_xl_amount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +102,20 @@ const DEFAULTS: RemoteConfigValues = {
   near_miss_bonus_seconds: REMOTE_CONFIG_DEFAULT_NEAR_MISS_BONUS_SECONDS,
   max_active_bubbles: REMOTE_CONFIG_DEFAULT_MAX_ACTIVE_BUBBLES,
   max_active_ripples: REMOTE_CONFIG_DEFAULT_MAX_ACTIVE_RIPPLES,
+
+  // Ad config defaults
+  ad_rewarded_daily_limit: 5,
+  ad_interstitial_daily_limit: 3,
+  ad_rewarded_cooldown_ms: 300_000,
+  ad_interstitial_cooldown_ms: 600_000,
+  ad_interstitial_game_interval: 3,
+  ad_rewarded_coin_amount: 50,
+
+  // Economy config defaults
+  coin_pack_small_amount: 500,
+  coin_pack_medium_amount: 1500,
+  coin_pack_large_amount: 5000,
+  coin_pack_xl_amount: 15000,
 };
 
 /** Cache TTL: 1 hour (milliseconds). */
@@ -132,6 +170,16 @@ export class RemoteConfigService {
         near_miss_bonus_seconds: DEFAULTS.near_miss_bonus_seconds,
         max_active_bubbles: DEFAULTS.max_active_bubbles,
         max_active_ripples: DEFAULTS.max_active_ripples,
+        ad_rewarded_daily_limit: DEFAULTS.ad_rewarded_daily_limit,
+        ad_interstitial_daily_limit: DEFAULTS.ad_interstitial_daily_limit,
+        ad_rewarded_cooldown_ms: DEFAULTS.ad_rewarded_cooldown_ms,
+        ad_interstitial_cooldown_ms: DEFAULTS.ad_interstitial_cooldown_ms,
+        ad_interstitial_game_interval: DEFAULTS.ad_interstitial_game_interval,
+        ad_rewarded_coin_amount: DEFAULTS.ad_rewarded_coin_amount,
+        coin_pack_small_amount: DEFAULTS.coin_pack_small_amount,
+        coin_pack_medium_amount: DEFAULTS.coin_pack_medium_amount,
+        coin_pack_large_amount: DEFAULTS.coin_pack_large_amount,
+        coin_pack_xl_amount: DEFAULTS.coin_pack_xl_amount,
       });
 
       await rc.fetchAndActivate();
@@ -186,11 +234,11 @@ export class RemoteConfigService {
     return {
       salt_global: rc.getString('salt_global') || DEFAULTS.salt_global,
       salt_daily: rc.getString('salt_daily') || DEFAULTS.salt_daily,
-      base_continue_cost: this._parseNumber(
+      base_continue_cost: this._parsePositiveNumber(
         rc.getNumber('base_continue_cost'),
         DEFAULTS.base_continue_cost,
       ),
-      base_water_force: this._parseNumber(
+      base_water_force: this._parsePositiveNumber(
         rc.getNumber('base_water_force'),
         DEFAULTS.base_water_force,
       ),
@@ -203,24 +251,77 @@ export class RemoteConfigService {
         rc.getNumber('quality_score_threshold'),
         DEFAULTS.quality_score_threshold,
       ),
-      near_miss_bonus_seconds: this._parseNumber(
+      near_miss_bonus_seconds: this._parsePositiveNumber(
         rc.getNumber('near_miss_bonus_seconds'),
         DEFAULTS.near_miss_bonus_seconds,
       ),
-      max_active_bubbles: this._parseNumber(
+      max_active_bubbles: this._parsePositiveNumber(
         rc.getNumber('max_active_bubbles'),
         DEFAULTS.max_active_bubbles,
       ),
-      max_active_ripples: this._parseNumber(
+      max_active_ripples: this._parsePositiveNumber(
         rc.getNumber('max_active_ripples'),
         DEFAULTS.max_active_ripples,
+      ),
+
+      // Ad config
+      ad_rewarded_daily_limit: this._parseNumber(
+        rc.getNumber('ad_rewarded_daily_limit'),
+        DEFAULTS.ad_rewarded_daily_limit,
+      ),
+      ad_interstitial_daily_limit: this._parseNumber(
+        rc.getNumber('ad_interstitial_daily_limit'),
+        DEFAULTS.ad_interstitial_daily_limit,
+      ),
+      ad_rewarded_cooldown_ms: this._parsePositiveNumber(
+        rc.getNumber('ad_rewarded_cooldown_ms'),
+        DEFAULTS.ad_rewarded_cooldown_ms,
+      ),
+      ad_interstitial_cooldown_ms: this._parsePositiveNumber(
+        rc.getNumber('ad_interstitial_cooldown_ms'),
+        DEFAULTS.ad_interstitial_cooldown_ms,
+      ),
+      ad_interstitial_game_interval: this._parsePositiveNumber(
+        rc.getNumber('ad_interstitial_game_interval'),
+        DEFAULTS.ad_interstitial_game_interval,
+      ),
+      ad_rewarded_coin_amount: this._parsePositiveNumber(
+        rc.getNumber('ad_rewarded_coin_amount'),
+        DEFAULTS.ad_rewarded_coin_amount,
+      ),
+
+      // Economy config
+      coin_pack_small_amount: this._parsePositiveNumber(
+        rc.getNumber('coin_pack_small_amount'),
+        DEFAULTS.coin_pack_small_amount,
+      ),
+      coin_pack_medium_amount: this._parsePositiveNumber(
+        rc.getNumber('coin_pack_medium_amount'),
+        DEFAULTS.coin_pack_medium_amount,
+      ),
+      coin_pack_large_amount: this._parsePositiveNumber(
+        rc.getNumber('coin_pack_large_amount'),
+        DEFAULTS.coin_pack_large_amount,
+      ),
+      coin_pack_xl_amount: this._parsePositiveNumber(
+        rc.getNumber('coin_pack_xl_amount'),
+        DEFAULTS.coin_pack_xl_amount,
       ),
     };
   }
 
-  /** Returns `value` if it is a finite, positive number; otherwise returns `fallback`. */
+  /** Returns `value` if it is a finite, non-negative number; otherwise returns `fallback`. */
   private _parseNumber(value: number, fallback: number): number {
     return Number.isFinite(value) && value >= 0 ? value : fallback;
+  }
+
+  /**
+   * Returns `value` if it is a finite number strictly greater than 0;
+   * otherwise returns `fallback`. Use for parameters where 0 would cause
+   * a division-by-zero or halt gameplay (e.g. base_water_force, cooldowns).
+   */
+  private _parsePositiveNumber(value: number, fallback: number): number {
+    return Number.isFinite(value) && value > 0 ? value : fallback;
   }
 
   /**

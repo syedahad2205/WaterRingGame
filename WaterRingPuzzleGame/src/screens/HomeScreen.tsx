@@ -17,7 +17,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -34,21 +33,25 @@ import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../app/Navigation';
 import { usePlayerStore } from '../store/slices/playerSlice';
 import { useEconomyStore } from '../store/slices/economySlice';
+import { useChallengeStore } from '../store/slices/challengeSlice';
+import { useOnboardingStore } from '../store/slices/onboardingSlice';
+import { usePlayerProgressionStore } from '../store/slices/playerProgressionSlice';
+import { canClaimToday, claimDailyReward, getUpcomingRewards, DAILY_REWARDS } from '../features/progression/DailyRewardService';
+import { DS } from '../constants/designSystem';
+import { triggerHaptic } from '../constants/hapticPatterns';
+import { useAudio } from '../hooks/useAudio';
+import { Icon } from '../components/icons/GameIcons';
+import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { GlassCard } from '../components/ui/GlassCard';
+import { GlassButton } from '../components/ui/GlassButton';
+import { StatCard } from '../components/ui/StatCard';
+import { getActiveEvent } from '../constants/seasonalEvents';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type Props = StackScreenProps<RootStackParamList, 'MainTabs'>;
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const ACCENT = '#4FC3F7';
-
-/** Mock current challenge number. In production, read from ChallengeProgressService. */
-const CURRENT_CHALLENGE_NUMBER = 14;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -75,14 +78,15 @@ function secondsUntilMidnightUTC(): number {
 
 function CoinBadge({ balance }: { balance: number }): React.JSX.Element {
   return (
-    <View
+    <GlassCard
+      variant="subtle"
+      noAnimation
       style={styles.coinBadge}
-      accessible={true}
       accessibilityLabel={`Coin balance: ${balance}`}
     >
-      <Text style={styles.coinIcon} accessible={false}>💰</Text>
+      <Icon name="coin" size={18} color={DS.colors.accent} />
       <Text style={styles.coinText}>{balance.toLocaleString()}</Text>
-    </View>
+    </GlassCard>
   );
 }
 
@@ -93,7 +97,7 @@ function StreakBadge({ streak }: { streak: number }): React.JSX.Element {
       accessible={true}
       accessibilityLabel={`${streak} day streak`}
     >
-      <Text style={styles.streakIcon} accessible={false}>🔥</Text>
+      <Icon name="streak" size={18} color={DS.colors.warning} />
       <Text style={styles.streakText}>{streak}</Text>
     </View>
   );
@@ -104,13 +108,9 @@ interface HeroChallengeCardProps {
   onPlay: () => void;
 }
 
-// eslint-disable-next-line max-lines-per-function
 function HeroChallengeCard({ challengeNumber, onPlay }: HeroChallengeCardProps): React.JSX.Element {
   return (
-    <View style={styles.heroCard}>
-      {/* Background accent */}
-      <View style={styles.heroBg} />
-
+    <GlassCard variant="strong" glow={DS.colors.primary} style={styles.heroCard}>
       <View style={styles.heroContent}>
         <Text style={styles.heroSubtitle} accessible={false}>CURRENT CHALLENGE</Text>
         <Text
@@ -127,27 +127,29 @@ function HeroChallengeCard({ challengeNumber, onPlay }: HeroChallengeCardProps):
         {/* Star record */}
         <View style={styles.heroStars} accessible={true} accessibilityLabel="Best: 2 stars">
           {[1, 2, 3].map((i) => (
-            <Text key={i} style={[styles.heroStar, i <= 2 && styles.heroStarFilled]} accessible={false}>
-              {i <= 2 ? '★' : '☆'}
-            </Text>
+            <Icon
+              key={i}
+              name={i <= 2 ? 'star-filled' : 'star-empty'}
+              size={18}
+              color={i <= 2 ? DS.colors.accent : DS.colors.text.tertiary}
+            />
           ))}
           <Text style={styles.heroBestLabel}>Best</Text>
         </View>
       </View>
 
       {/* Play button */}
-      <Pressable
-        onPress={onPlay}
-        style={({ pressed }: { pressed: boolean }) => [styles.playButton, pressed ? styles.playButtonPressed : undefined]}
-        accessible={true}
-        accessibilityRole="button"
-        accessibilityLabel={`Play challenge ${challengeNumber}`}
-        hitSlop={8}
-      >
-        <Text style={styles.playIcon} accessible={false}>▶</Text>
-        <Text style={styles.playLabel}>Play</Text>
-      </Pressable>
-    </View>
+      <View style={styles.playButtonWrapper}>
+        <GlassButton
+          label="Play"
+          variant="primary"
+          size="lg"
+          iconLeft="play"
+          onPress={onPlay}
+          style={styles.playButton}
+        />
+      </View>
+    </GlassCard>
   );
 }
 
@@ -160,42 +162,34 @@ function DailyCard({ countdown, onPress }: DailyCardProps): React.JSX.Element {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }: { pressed: boolean }) => [styles.dailyCard, pressed ? styles.dailyCardPressed : undefined]}
       accessible={true}
       accessibilityRole="button"
       accessibilityLabel={`Daily challenge. Resets in ${countdown}.`}
     >
-      <View style={styles.dailyLeft}>
-        <Text style={styles.dailyIcon} accessible={false}>🗓️</Text>
-        <View>
-          <Text style={styles.dailyTitle}>Daily Challenge</Text>
-          <Text style={styles.dailySubtitle}>Resets in {countdown}</Text>
+      <GlassCard variant="medium" noAnimation style={styles.dailyCard}>
+        <View style={styles.dailyLeft}>
+          <Icon name="timer" size={28} color={DS.colors.secondary} />
+          <View>
+            <Text style={styles.dailyTitle}>Daily Challenge</Text>
+            <Text style={styles.dailySubtitle}>Resets in {countdown}</Text>
+          </View>
         </View>
-      </View>
-      <Text style={styles.dailyArrow} accessible={false}>›</Text>
+        <Icon name="chevron-right" size={24} color={DS.colors.text.tertiary} />
+      </GlassCard>
     </Pressable>
   );
 }
 
-interface QuickStatProps {
-  label: string;
-  value: string | number;
-  icon: string;
-}
+// ---------------------------------------------------------------------------
+// Feature shortcut mapping
+// ---------------------------------------------------------------------------
 
-function QuickStat({ label, value, icon }: QuickStatProps): React.JSX.Element {
-  return (
-    <View
-      style={styles.quickStat}
-      accessible={true}
-      accessibilityLabel={`${label}: ${value}`}
-    >
-      <Text style={styles.quickStatIcon} accessible={false}>{icon}</Text>
-      <Text style={styles.quickStatValue}>{value}</Text>
-      <Text style={styles.quickStatLabel}>{label}</Text>
-    </View>
-  );
-}
+const SHORTCUTS = [
+  { icon: 'leaderboard' as const, label: 'Leaderboard', screen: 'Leaderboard' as const },
+  { icon: 'store' as const, label: 'Store', screen: 'Store' as const },
+  { icon: 'gift' as const, label: 'Inventory', screen: 'Inventory' as const },
+  { icon: 'trophy' as const, label: 'Achievements', screen: 'Achievements' as const },
+];
 
 // ---------------------------------------------------------------------------
 // HomeScreen
@@ -209,13 +203,23 @@ function QuickStat({ label, value, icon }: QuickStatProps): React.JSX.Element {
  */
 // eslint-disable-next-line max-lines-per-function
 export default function HomeScreen({ navigation }: Props): React.JSX.Element {
+  const audio = useAudio();
   const displayName = usePlayerStore((s) => s.displayName);
   const level = usePlayerStore((s) => s.level);
   const totalStars = usePlayerStore((s) => s.totalStars);
+  const prestige = usePlayerStore((s) => s.prestige);
   const coinBalance = useEconomyStore((s) => s.coinBalance);
+  const highestChallengeShown = useOnboardingStore((s) => s.highestChallengeShown);
+  const currentChallengeNumber = highestChallengeShown > 0 ? highestChallengeShown + 1 : 1;
 
-  // Mock streak value (replace with StreakService.currentStreak)
-  const streak = 5;
+  // Streak from progression store
+  const streak = usePlayerProgressionStore((s) => s.currentStreak);
+
+  // Daily reward state
+  const lastClaimDate = usePlayerProgressionStore((s) => s.lastDailyClaimDate);
+  const dailyRewardsClaimed = usePlayerProgressionStore((s) => s.dailyRewardsClaimed);
+  const [showDailyReward, setShowDailyReward] = useState(false);
+  const [claimedReward, setClaimedReward] = useState<{amount: number; label: string} | null>(null);
 
   // Daily countdown
   const [countdown, setCountdown] = useState(secondsUntilMidnightUTC);
@@ -225,6 +229,37 @@ export default function HomeScreen({ navigation }: Props): React.JSX.Element {
     }, 1000);
     return (): void => clearInterval(interval);
   }, []);
+
+  // Check daily reward availability on mount
+  useEffect(() => {
+    if (canClaimToday(lastClaimDate)) {
+      setShowDailyReward(true);
+    }
+  }, [lastClaimDate]);
+
+  function handleClaimDailyReward(): void {
+    const progression = usePlayerProgressionStore.getState();
+    const reward = claimDailyReward(progression.dailyRewardsClaimed + 1);
+
+    // Credit coins to economy store FIRST -- if this fails, claim date stays unchanged
+    try {
+      useEconomyStore.getState().creditCoins(reward.amount, 'daily_reward');
+    } catch {
+      // creditCoins failed — do not mark as claimed so user can retry
+      return;
+    }
+
+    progression.setLastDailyClaimDate(new Date().toISOString());
+    progression.incrementDailyRewardsClaimed();
+    setClaimedReward({ amount: reward.amount, label: reward.label });
+    triggerHaptic('coinEarned');
+    audio.playSFX('coin_collect');
+    // Auto-hide after 2 seconds
+    setTimeout(() => {
+      setShowDailyReward(false);
+      setClaimedReward(null);
+    }, 2000);
+  }
 
   // Entrance animations
   const headerOpacity = useSharedValue(0);
@@ -245,13 +280,13 @@ export default function HomeScreen({ navigation }: Props): React.JSX.Element {
   const cardsStyle = useAnimatedStyle(() => ({ opacity: cardsOpacity.value }));
 
   function handlePlay(): void {
-    // Navigate to game with current challenge
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (navigation as any).navigate('Game', { challengeNumber: CURRENT_CHALLENGE_NUMBER });
+    triggerHaptic('buttonPressHard');
+    navigation.navigate('Game', { challengeNumber: currentChallengeNumber });
   }
 
   function handleDailyPress(): void {
-    navigation.navigate('DailyChallenge' as never);
+    triggerHaptic('buttonPress');
+    navigation.navigate('DailyChallenge');
   }
 
   const firstName = displayName ? displayName.split(' ')[0] : 'Player';
@@ -259,12 +294,12 @@ export default function HomeScreen({ navigation }: Props): React.JSX.Element {
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Header ──────────────────────────────────────────────────── */}
+        {/* -- Header --------------------------------------------------- */}
         <Animated.View style={[styles.header, headerStyle]}>
           <View style={styles.headerLeft}>
             <Text style={styles.greeting} accessibilityRole="header">
@@ -278,54 +313,123 @@ export default function HomeScreen({ navigation }: Props): React.JSX.Element {
           </View>
         </Animated.View>
 
-        {/* ── Hero challenge card ──────────────────────────────────────── */}
+        {/* -- Daily reward banner -------------------------------------- */}
+        {showDailyReward && (
+          <Animated.View style={cardsStyle}>
+            <Pressable onPress={handleClaimDailyReward} accessibilityRole="button" accessibilityLabel="Claim daily reward">
+              <GlassCard variant="strong" glow={DS.colors.accent} style={styles.dailyRewardCard}>
+                <Icon name="gift" size={32} color={DS.colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.dailyRewardTitle}>
+                    {claimedReward ? 'Claimed!' : 'Daily Reward Available!'}
+                  </Text>
+                  <Text style={styles.dailyRewardSubtitle}>
+                    {claimedReward ? `+${claimedReward.amount} coins` : 'Tap to claim your reward'}
+                  </Text>
+                </View>
+                {!claimedReward && <Icon name="chevron-right" size={24} color={DS.colors.accent} />}
+              </GlassCard>
+            </Pressable>
+          </Animated.View>
+        )}
+
+        {/* -- Seasonal event banner ------------------------------------ */}
+        {(() => {
+          const activeEvent = getActiveEvent();
+          if (!activeEvent) return null;
+          const eventAccent = activeEvent.accentColor;
+          const startDate = new Date(new Date().getFullYear(), activeEvent.startMonth - 1, activeEvent.startDay);
+          const endDate = new Date(startDate.getTime() + activeEvent.durationDays * 86400000);
+          const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / 86400000));
+          return (
+            <Animated.View style={cardsStyle}>
+              <GlassCard variant="strong" glow={eventAccent} style={styles.eventBanner}>
+                <View style={[styles.eventIconWrapper, { backgroundColor: eventAccent + '33' }]}>
+                  <Icon name="sparkle" size={28} color={eventAccent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.eventTitle, { color: eventAccent }]}>
+                    {activeEvent.name}
+                  </Text>
+                  <Text style={styles.eventSubtitle}>
+                    {daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining · {activeEvent.exclusiveRewards.length} exclusive rewards
+                  </Text>
+                </View>
+                <Icon name="chevron-right" size={20} color={eventAccent} />
+              </GlassCard>
+            </Animated.View>
+          );
+        })()}
+
+        {/* -- Hero challenge card -------------------------------------- */}
         <Animated.View style={[styles.heroSection, heroStyle]}>
           <HeroChallengeCard
-            challengeNumber={CURRENT_CHALLENGE_NUMBER}
+            challengeNumber={currentChallengeNumber}
             onPlay={handlePlay}
           />
         </Animated.View>
 
-        {/* ── Daily challenge card ────────────────────────────────────── */}
-        <Animated.View style={cardsStyle}>
+        {/* -- Daily challenge card ------------------------------------- */}
+        <Animated.View style={[styles.dailySection, cardsStyle]}>
           <DailyCard
             countdown={formatCountdown(countdown)}
             onPress={handleDailyPress}
           />
         </Animated.View>
 
-        {/* ── Feature shortcuts ───────────────────────────────────────── */}
+        {/* -- Feature shortcuts ---------------------------------------- */}
         <Animated.View style={[styles.shortcutRow, cardsStyle]}>
-          {[
-            { icon: '🏆', label: 'Leaderboard', screen: 'Leaderboard' as never },
-            { icon: '🎨', label: 'Store', screen: 'Store' as never },
-            { icon: '🎒', label: 'Inventory', screen: 'Inventory' as never },
-            { icon: '🏅', label: 'Achievements', screen: 'Achievements' as never },
-          ].map((item) => (
+          {SHORTCUTS.map((item) => (
             <Pressable
               key={item.label}
               onPress={(): void => navigation.navigate(item.screen)}
-              style={({ pressed }: { pressed: boolean }) => [styles.shortcut, pressed ? styles.shortcutPressed : undefined]}
+              style={({ pressed }: { pressed: boolean }) => [
+                styles.shortcutWrapper,
+                pressed ? styles.shortcutPressed : undefined,
+              ]}
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel={item.label}
             >
-              <Text style={styles.shortcutIcon} accessible={false}>{item.icon}</Text>
-              <Text style={styles.shortcutLabel}>{item.label}</Text>
+              <GlassCard variant="subtle" noAnimation style={styles.shortcut}>
+                <Icon name={item.icon} size={24} color={DS.colors.text.secondary} />
+                <Text style={styles.shortcutLabel}>{item.label}</Text>
+              </GlassCard>
             </Pressable>
           ))}
         </Animated.View>
 
-        {/* ── Quick stats ─────────────────────────────────────────────── */}
+        {/* -- Quick stats ---------------------------------------------- */}
         <Animated.View style={[styles.statsRow, cardsStyle]}>
-          <QuickStat icon="⭐" label="Stars" value={(totalStars ?? 0).toLocaleString()} />
-          <QuickStat icon="🎯" label="Challenges" value={CURRENT_CHALLENGE_NUMBER - 1} />
-          <QuickStat icon="💎" label="Prestige" value={0} />
+          <StatCard
+            icon="star"
+            iconColor={DS.colors.accent}
+            value={totalStars ?? 0}
+            label="Stars"
+            variant="compact"
+            style={styles.statItem}
+          />
+          <StatCard
+            icon="target"
+            iconColor={DS.colors.secondary}
+            value={Math.max(0, currentChallengeNumber - 1)}
+            label="Challenges"
+            variant="compact"
+            style={styles.statItem}
+          />
+          <StatCard
+            icon="gem"
+            iconColor={DS.colors.primary}
+            value={prestige}
+            label="Prestige"
+            variant="compact"
+            style={styles.statItem}
+          />
         </Animated.View>
 
-        <View style={{ height: 20 }} />
+        <View style={{ height: DS.spacing.xl }} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
@@ -334,63 +438,224 @@ export default function HomeScreen({ navigation }: Props): React.JSX.Element {
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#070f1e' },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 12 },
+  scrollContent: {
+    paddingHorizontal: DS.spacing.lg,
+    paddingTop: DS.spacing.md,
+  },
 
   // Header
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  headerLeft: { gap: 2 },
-  headerRight: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  greeting: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  levelTag: { color: ACCENT, fontSize: 13, fontWeight: '600' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: DS.spacing.xl,
+  },
+  headerLeft: {
+    gap: DS.spacing.xxs,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: DS.spacing.sm,
+    alignItems: 'center',
+  },
+  greeting: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.title3,
+    fontWeight: DS.typography.weight.heavy,
+    letterSpacing: DS.typography.letterSpacing.title3,
+  },
+  levelTag: {
+    color: DS.colors.primary,
+    fontSize: DS.typography.size.caption1,
+    fontWeight: DS.typography.weight.semibold,
+    letterSpacing: DS.typography.letterSpacing.caption1,
+  },
 
-  // Coin / streak badges
-  coinBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,215,64,0.12)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, gap: 5, borderWidth: 1, borderColor: 'rgba(255,215,64,0.25)' },
-  coinIcon: { fontSize: 14 },
-  coinText: { color: '#FFD740', fontSize: 13, fontWeight: '700' },
-  streakBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,87,34,0.12)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, gap: 5, borderWidth: 1, borderColor: 'rgba(255,87,34,0.25)' },
-  streakIcon: { fontSize: 14 },
-  streakText: { color: '#FF7043', fontSize: 13, fontWeight: '700' },
+  // Coin badge
+  coinBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: DS.spacing.sm,
+    paddingVertical: DS.spacing.xs,
+    gap: DS.spacing.xxs,
+    borderColor: 'rgba(255,215,0,0.25)',
+  },
+  coinText: {
+    color: DS.colors.accent,
+    fontSize: DS.typography.size.caption1,
+    fontWeight: DS.typography.weight.bold,
+  },
+
+  // Streak badge
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,87,34,0.12)',
+    borderRadius: DS.radius.pill,
+    paddingHorizontal: DS.spacing.sm,
+    paddingVertical: DS.spacing.xs,
+    gap: DS.spacing.xxs,
+    borderWidth: 1,
+    borderColor: 'rgba(255,87,34,0.25)',
+  },
+  streakText: {
+    color: DS.colors.warning,
+    fontSize: DS.typography.size.caption1,
+    fontWeight: DS.typography.weight.bold,
+  },
 
   // Hero card
-  heroSection: { marginBottom: 14 },
-  heroCard: { borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1.5, borderColor: 'rgba(79,195,247,0.3)', padding: 20, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 16 },
-  heroBg: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(79,195,247,0.04)' },
-  heroContent: { flex: 1, gap: 4 },
-  heroSubtitle: { color: ACCENT, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5 },
-  heroChallenge: { color: '#fff', fontSize: 36, fontWeight: '900', lineHeight: 40 },
-  heroDesc: { color: 'rgba(255,255,255,0.45)', fontSize: 13 },
-  heroStars: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
-  heroStar: { fontSize: 16, color: 'rgba(255,255,255,0.2)' },
-  heroStarFilled: { color: '#FFD740' },
-  heroBestLabel: { color: 'rgba(255,255,255,0.35)', fontSize: 11, marginLeft: 4 },
+  heroSection: {
+    marginBottom: DS.spacing.md,
+  },
+  heroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.lg,
+    padding: DS.spacing.xl,
+  },
+  heroContent: {
+    flex: 1,
+    gap: DS.spacing.xxs,
+  },
+  heroSubtitle: {
+    color: DS.colors.primary,
+    fontSize: DS.typography.size.caption1,
+    fontWeight: DS.typography.weight.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  heroChallenge: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.display,
+    fontWeight: DS.typography.weight.black,
+    lineHeight: DS.typography.size.display + 4,
+  },
+  heroDesc: {
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.caption1,
+  },
+  heroStars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.xxs,
+    marginTop: DS.spacing.xxs,
+  },
+  heroBestLabel: {
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.caption2,
+    marginLeft: DS.spacing.xxs,
+  },
 
   // Play button
-  playButton: { width: 72, height: 72, borderRadius: 36, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', gap: 2, shadowColor: ACCENT, shadowOpacity: 0.45, shadowOffset: { width: 0, height: 4 }, shadowRadius: 12, elevation: 8 },
-  playButtonPressed: { opacity: 0.85, transform: [{ scale: 0.96 }] },
-  playIcon: { color: '#070f1e', fontSize: 22 },
-  playLabel: { color: '#070f1e', fontSize: 11, fontWeight: '800' },
+  playButtonWrapper: {
+    ...DS.shadows.glow.primary,
+  },
+  playButton: {
+    minWidth: 80,
+  },
 
   // Daily card
-  dailyCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', marginBottom: 14 },
-  dailyCardPressed: { opacity: 0.75 },
-  dailyLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  dailyIcon: { fontSize: 28 },
-  dailyTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  dailySubtitle: { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 2 },
-  dailyArrow: { color: 'rgba(255,255,255,0.3)', fontSize: 28 },
+  dailySection: {
+    marginBottom: DS.spacing.md,
+  },
+  dailyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: DS.spacing.lg,
+  },
+  dailyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.md,
+  },
+  dailyTitle: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.callout,
+    fontWeight: DS.typography.weight.bold,
+  },
+  dailySubtitle: {
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.caption1,
+    marginTop: 2,
+  },
 
   // Shortcut grid
-  shortcutRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-  shortcut: { flex: 1, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, paddingVertical: 14, gap: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
-  shortcutPressed: { opacity: 0.7 },
-  shortcutIcon: { fontSize: 22 },
-  shortcutLabel: { color: 'rgba(255,255,255,0.55)', fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  shortcutRow: {
+    flexDirection: 'row',
+    gap: DS.spacing.sm,
+    marginBottom: DS.spacing.md,
+  },
+  shortcutWrapper: {
+    flex: 1,
+  },
+  shortcutPressed: {
+    opacity: 0.7,
+  },
+  shortcut: {
+    alignItems: 'center',
+    paddingVertical: DS.spacing.md,
+    gap: DS.spacing.xs,
+  },
+  shortcutLabel: {
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.caption2,
+    fontWeight: DS.typography.weight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: DS.typography.letterSpacing.caption2,
+  },
 
   // Quick stats
-  statsRow: { flexDirection: 'row', gap: 10 },
-  quickStat: { flex: 1, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, paddingVertical: 14, gap: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
-  quickStatIcon: { fontSize: 20 },
-  quickStatValue: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  quickStatLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  statsRow: {
+    flexDirection: 'row',
+    gap: DS.spacing.sm,
+  },
+  statItem: {
+    flex: 1,
+  },
+
+  // Daily reward banner
+  dailyRewardCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: DS.spacing.lg,
+    gap: DS.spacing.md,
+    marginBottom: DS.spacing.md,
+  },
+  dailyRewardTitle: {
+    color: DS.colors.accent,
+    fontSize: DS.typography.size.callout,
+    fontWeight: DS.typography.weight.bold,
+  },
+  dailyRewardSubtitle: {
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.caption1,
+    marginTop: 2,
+  },
+
+  // Seasonal event banner
+  eventBanner: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    padding: DS.spacing.lg,
+    gap: DS.spacing.md,
+    marginBottom: DS.spacing.md,
+  },
+  eventIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  eventTitle: {
+    fontSize: DS.typography.size.callout,
+    fontWeight: DS.typography.weight.bold,
+  },
+  eventSubtitle: {
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.caption1,
+    marginTop: 2,
+  },
 });

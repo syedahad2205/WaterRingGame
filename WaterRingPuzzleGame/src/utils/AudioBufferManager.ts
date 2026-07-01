@@ -44,7 +44,7 @@ class AudioBufferManagerClass {
     const stem = this.stems.get(stemId);
     if (stem && !stem.loaded) {
       if (this.totalLoadedBytes + stem.estimatedSizeBytes > AUDIO_BUDGET_BYTES) {
-        console.warn(`[AudioBufferManager] ${stemId} would exceed 20MB budget`);
+        if (__DEV__) console.warn(`[AudioBufferManager] ${stemId} would exceed 20MB budget`);
         return;
       }
       stem.loaded = true;

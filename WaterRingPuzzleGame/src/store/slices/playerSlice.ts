@@ -89,6 +89,18 @@ export interface PlayerActions {
    * `applyPrestige as prestige` at the call site.
    */
   applyPrestige: () => void;
+
+  /**
+   * Update the total number of stars earned across all challenges.
+   * Typically called after completing a challenge with stars.
+   */
+  updateTotalStars: (stars: number) => void;
+
+  /**
+   * Update the completionist percentage (0-100).
+   * Typically recomputed after challenge completion or achievement progress.
+   */
+  updateCompletionScorePercent: (percent: number) => void;
 }
 
 /** Combined Zustand store type for the player slice. */
@@ -166,6 +178,15 @@ export const usePlayerStore = create<PlayerSlice>()(
           level: 1,
           rank: 'Ripple' as PlayerRank,
         }));
+      },
+
+      updateTotalStars: (stars: number): void => {
+        if (stars < 0) return;
+        set({ totalStars: stars });
+      },
+
+      updateCompletionScorePercent: (percent: number): void => {
+        set({ completionScorePercent: Math.max(0, Math.min(100, percent)) });
       },
     }),
     {

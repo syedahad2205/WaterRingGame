@@ -81,31 +81,44 @@ export default function ParticleSystem({
       style={{ width, height }}
       accessibilityLabel="Particle effects layer"
     >
-      {particles.map((particle) => {
-        const lifeFraction = particle.maxLife > 0
-          ? Math.max(0, Math.min(1, particle.life / particle.maxLife))
-          : 0;
-        const effectiveAlpha = particle.opacity * lifeFraction;
-
-        // Parse base color and apply effective alpha via Skia paint.
-        const paint = Skia.Paint();
-        paint.setColor(Skia.Color(particle.color));
-        paint.setAlphaf(effectiveAlpha);
-        paint.setAntiAlias(true);
-
-        return (
-          <Circle
-            key={particle.id}
-            cx={particle.x}
-            cy={particle.y}
-            r={Math.max(0.5, particle.radius)}
-            paint={paint}
-          />
-        );
-      })}
+      {particles.map((particle) => (
+        <ParticleCircle key={particle.id} particle={particle} />
+      ))}
     </Canvas>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Single particle — isolates paint allocation so React can skip re-renders
+// for unchanged particles via memoisation.
+// ---------------------------------------------------------------------------
+
+interface ParticleCircleProps {
+  particle: ParticleData;
+}
+
+const ParticleCircle = React.memo(function ParticleCircle({
+  particle,
+}: ParticleCircleProps): React.JSX.Element {
+  const lifeFraction = particle.maxLife > 0
+    ? Math.max(0, Math.min(1, particle.life / particle.maxLife))
+    : 0;
+  const effectiveAlpha = particle.opacity * lifeFraction;
+
+  const paint = Skia.Paint();
+  paint.setColor(Skia.Color(particle.color));
+  paint.setAlphaf(effectiveAlpha);
+  paint.setAntiAlias(true);
+
+  return (
+    <Circle
+      cx={particle.x}
+      cy={particle.y}
+      r={Math.max(0.5, particle.radius)}
+      paint={paint}
+    />
+  );
+});
 
 // ---------------------------------------------------------------------------
 // Utility: createRingLandParticles

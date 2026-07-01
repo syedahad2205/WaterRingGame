@@ -11,69 +11,76 @@
  * Task: 8.5.3
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   FlatList,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
+import { useNavigation } from '@react-navigation/native';
 import { useCosmeticsStore } from '../store/slices/cosmeticsSlice';
+import { DS } from '../constants/designSystem';
+import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { GlassCard } from '../components/ui/GlassCard';
+import { GlassButton } from '../components/ui/GlassButton';
+import { Badge } from '../components/ui/Badge';
+import { Icon, type IconName } from '../components/icons/GameIcons';
+import {
+  COSMETIC_CATALOG,
+  getCosmeticsByCategory,
+  type CosmeticDefinition,
+  type CosmeticCategory as CatalogCategory,
+  type CosmeticRarity,
+} from '../constants/cosmeticCatalog';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type Category = 'ring_skin' | 'water_color' | 'victory_animation' | 'button_skin';
+type InventoryCategory = CatalogCategory;
 
-interface CosmeticItem {
+interface InventoryItem {
   id: string;
   name: string;
-  icon: string;
   description: string;
-  category: Category;
-  tier: 'common' | 'rare' | 'epic' | 'legendary';
+  category: InventoryCategory;
+  rarity: CosmeticRarity;
+  previewColors: { primary: string; secondary: string };
 }
 
 // ---------------------------------------------------------------------------
-// Catalog (items that exist in the game — ownership is checked against store)
+// Build inventory items from real cosmetic catalog
 // ---------------------------------------------------------------------------
 
-const ALL_COSMETICS: CosmeticItem[] = [
-  // Ring skins
-  { id: 'ring_default',  name: 'Default',       icon: '⭕', description: 'The classic ring.', category: 'ring_skin', tier: 'common' },
-  { id: 'ring_gold',     name: 'Golden',         icon: '💛', description: 'A shimmering gold finish.', category: 'ring_skin', tier: 'rare' },
-  { id: 'ring_neon',     name: 'Neon',           icon: '💚', description: 'Glowing neon outline.', category: 'ring_skin', tier: 'epic' },
-  { id: 'ring_crystal',  name: 'Crystal',        icon: '💎', description: 'Semi-transparent crystal.', category: 'ring_skin', tier: 'legendary' },
-  { id: 'ring_rose',     name: 'Rose',           icon: '🌸', description: 'Soft rose gold.', category: 'ring_skin', tier: 'common' },
-  // Water colours
-  { id: 'water_default', name: 'Ocean Blue',     icon: '🔵', description: 'Clear ocean water.', category: 'water_color', tier: 'common' },
-  { id: 'water_ocean',   name: 'Deep Sea',       icon: '🌊', description: 'Dark abyssal water.', category: 'water_color', tier: 'rare' },
-  { id: 'water_lava',    name: 'Magma',          icon: '🔴', description: 'Molten lava flow.', category: 'water_color', tier: 'epic' },
-  { id: 'water_arctic',  name: 'Arctic',         icon: '🧊', description: 'Icy arctic water.', category: 'water_color', tier: 'rare' },
-  // Victory animations
-  { id: 'victory_default', name: 'Confetti',     icon: '🎊', description: 'Classic confetti burst.', category: 'victory_animation', tier: 'common' },
-  { id: 'victory_stars', name: 'Star Burst',     icon: '⭐', description: 'Stars explode outward.', category: 'victory_animation', tier: 'rare' },
-  { id: 'victory_firework', name: 'Fireworks',   icon: '🎆', description: 'Brilliant fireworks display.', category: 'victory_animation', tier: 'epic' },
-  // Button skins
-  { id: 'button_default', name: 'Standard',      icon: '🔘', description: 'Clean minimal button.', category: 'button_skin', tier: 'common' },
-  { id: 'button_glow',    name: 'Glow',          icon: '✨', description: 'Soft outer glow effect.', category: 'button_skin', tier: 'rare' },
+function buildCategoryItems(category: InventoryCategory): InventoryItem[] {
+  return getCosmeticsByCategory(category).map((def) => ({
+    id: def.id,
+    name: def.name,
+    description: def.description,
+    category: def.category,
+    rarity: def.rarity,
+    previewColors: def.previewColors,
+  }));
+}
+
+const CATEGORY_TABS: { id: InventoryCategory; label: string; icon: IconName }[] = [
+  { id: 'ring_skin',          label: 'Rings',    icon: 'ring' },
+  { id: 'water_style',        label: 'Water',    icon: 'water-drop' },
+  { id: 'peg_skin',           label: 'Pegs',     icon: 'target' },
+  { id: 'particle_trail',     label: 'Trails',   icon: 'sparkle' },
+  { id: 'victory_animation',  label: 'Victory',  icon: 'star' },
+  { id: 'button_skin',        label: 'Buttons',  icon: 'gem' },
 ];
 
-const CATEGORY_TABS: { id: Category; label: string; icon: string }[] = [
-  { id: 'ring_skin',          label: 'Rings',    icon: '⭕' },
-  { id: 'water_color',        label: 'Water',    icon: '💧' },
-  { id: 'victory_animation',  label: 'Victory',  icon: '🎊' },
-  { id: 'button_skin',        label: 'Buttons',  icon: '🔘' },
-];
-
-const TIER_COLOURS: Record<string, string> = {
-  common: '#90A4AE',
-  rare: '#42A5F5',
-  epic: '#AB47BC',
-  legendary: '#FFD740',
+const RARITY_COLOURS: Record<CosmeticRarity, string> = {
+  common: DS.colors.text.secondary,
+  rare: DS.colors.primary,
+  epic: DS.colors.secondary,
+  legendary: DS.colors.accent,
+  mythic: '#FF00FF',
 };
 
 // ---------------------------------------------------------------------------
@@ -81,20 +88,18 @@ const TIER_COLOURS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 interface InventoryCardProps {
-  item: CosmeticItem;
+  item: InventoryItem;
   isEquipped: boolean;
   onToggle: () => void;
 }
 
-function InventoryCard({ item, isEquipped, onToggle }: InventoryCardProps): React.JSX.Element {
-  const tierColor = TIER_COLOURS[item.tier];
+const InventoryCard = React.memo(function InventoryCard({ item, isEquipped, onToggle }: InventoryCardProps): React.JSX.Element {
+  const rarityColor = RARITY_COLOURS[item.rarity];
   return (
     <Pressable
       onPress={onToggle}
       style={({ pressed }: { pressed: boolean }) => [
-        styles.card,
-        isEquipped && styles.cardEquipped,
-        { borderColor: isEquipped ? tierColor : 'rgba(255,255,255,0.09)' },
+        styles.cardPressable,
         pressed ? styles.cardPressed : undefined,
       ]}
       accessible={true}
@@ -102,17 +107,30 @@ function InventoryCard({ item, isEquipped, onToggle }: InventoryCardProps): Reac
       accessibilityLabel={`${item.name}. ${isEquipped ? 'Equipped. Tap to unequip.' : 'Tap to equip.'}`}
       accessibilityState={{ selected: isEquipped }}
     >
-      <Text style={styles.cardIcon} accessible={false}>{item.icon}</Text>
-      <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-      <View style={[styles.tierDot, { backgroundColor: tierColor }]} />
-      {isEquipped ? (
-        <View style={styles.equippedBadge}>
-          <Text style={styles.equippedBadgeText}>ON</Text>
+      <GlassCard
+        variant="medium"
+        glow={isEquipped ? DS.colors.primary : undefined}
+        noAnimation
+        style={styles.card}
+      >
+        <View style={[styles.previewSwatch, {
+          backgroundColor: item.previewColors.primary,
+          borderColor: isEquipped ? DS.colors.primary : item.previewColors.secondary,
+          shadowColor: item.previewColors.primary,
+        }]}>
+          <View style={[styles.previewSwatchInner, { backgroundColor: item.previewColors.secondary }]} />
+          {isEquipped && (
+            <View style={styles.equippedCheck}>
+              <Icon name="check" size={12} color="#FFFFFF" />
+            </View>
+          )}
         </View>
-      ) : null}
+        <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+        <Badge variant="status" value={item.rarity.toUpperCase()} color={rarityColor} />
+      </GlassCard>
     </Pressable>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // InventoryScreen
@@ -120,23 +138,20 @@ function InventoryCard({ item, isEquipped, onToggle }: InventoryCardProps): Reac
 
 // eslint-disable-next-line max-lines-per-function
 export default function InventoryScreen(): React.JSX.Element {
-  const [activeCategory, setActiveCategory] = useState<Category>('ring_skin');
+  const navigation = useNavigation();
+  const [activeCategory, setActiveCategory] = useState<InventoryCategory>('ring_skin');
 
   const ownedIds = useCosmeticsStore((s) => s.ownedCosmeticIds);
   const equippedIds = useCosmeticsStore((s) => s.equippedCosmeticIds);
   const equipCosmetic = useCosmeticsStore((s) => s.equipCosmetic);
   const unequipCosmetic = useCosmeticsStore((s) => s.unequipCosmetic);
 
-  // Default items are always "owned" — include ring_default, water_default, etc.
-  const DEFAULT_IDS = ['ring_default', 'water_default', 'victory_default', 'button_default'];
-
-  const visibleItems = ALL_COSMETICS.filter(
-    (c) => c.category === activeCategory && (ownedIds.includes(c.id) || DEFAULT_IDS.includes(c.id)),
-  );
+  const allCategoryItems = buildCategoryItems(activeCategory);
+  const visibleItems = allCategoryItems.filter((c) => ownedIds.includes(c.id));
 
   const currentlyEquipped = equippedIds[activeCategory];
 
-  const handleToggle = useCallback((item: CosmeticItem): void => {
+  const handleToggle = useCallback((item: InventoryItem): void => {
     if (currentlyEquipped === item.id) {
       unequipCosmetic(item.category);
     } else {
@@ -144,7 +159,20 @@ export default function InventoryScreen(): React.JSX.Element {
     }
   }, [currentlyEquipped, equipCosmetic, unequipCosmetic]);
 
-  const renderItem = useCallback(({ item }: { item: CosmeticItem }): React.JSX.Element => (
+  const contentOpacity = useSharedValue(0);
+  const contentTranslateY = useSharedValue(20);
+
+  useEffect(() => {
+    contentOpacity.value = withTiming(1, { duration: 400 });
+    contentTranslateY.value = withDelay(100, withTiming(0, { duration: 350, easing: Easing.out(Easing.ease) }));
+  }, []);
+
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
+  }));
+
+  const renderItem = useCallback(({ item }: { item: InventoryItem }): React.JSX.Element => (
     <InventoryCard
       item={item}
       isEquipped={currentlyEquipped === item.id}
@@ -153,41 +181,58 @@ export default function InventoryScreen(): React.JSX.Element {
   ), [currentlyEquipped, handleToggle]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title} accessibilityRole="header">Inventory</Text>
+    <ScreenContainer accessibilityLabel="Inventory screen">
+      {/* Header with back button */}
+      <View style={styles.headerRow}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Icon name="back" size={28} color={DS.colors.text.primary} />
+        </Pressable>
+        <Text style={styles.pageTitle}>Inventory</Text>
+      </View>
 
+      <Animated.View style={contentStyle}>
       {/* Category tabs */}
       <View style={styles.tabRow}>
         {CATEGORY_TABS.map((tab) => (
-          <Pressable
+          <GlassButton
             key={tab.id}
+            label={tab.label}
+            variant={activeCategory === tab.id ? 'primary' : 'ghost'}
+            size="sm"
+            iconLeft={tab.icon}
             onPress={(): void => setActiveCategory(tab.id)}
-            style={[styles.tab, activeCategory === tab.id && styles.tabActive]}
-            accessible={true}
+            style={styles.tabButton}
             accessibilityRole="tab"
             accessibilityState={{ selected: activeCategory === tab.id }}
             accessibilityLabel={`${tab.label} category`}
-          >
-            <Text style={styles.tabIcon} accessible={false}>{tab.icon}</Text>
-            <Text style={[styles.tabLabel, activeCategory === tab.id && styles.tabLabelActive]}>
-              {tab.label}
-            </Text>
-          </Pressable>
+          />
         ))}
       </View>
 
       {/* Equipped status */}
-      <View style={styles.equippedStatus}>
-        <Text style={styles.equippedStatusText}>
-          {currentlyEquipped
-            ? `Equipped: ${ALL_COSMETICS.find((c) => c.id === currentlyEquipped)?.name ?? currentlyEquipped}`
-            : 'Nothing equipped'}
-        </Text>
-      </View>
+      <GlassCard variant="subtle" noAnimation style={styles.equippedStatus}>
+        <View style={styles.equippedStatusRow}>
+          <Icon
+            name="check"
+            size={DS.typography.size.body}
+            color={currentlyEquipped ? DS.colors.success : DS.colors.text.tertiary}
+          />
+          <Text style={styles.equippedStatusText}>
+            {currentlyEquipped
+              ? `Equipped: ${allCategoryItems.find((c) => c.id === currentlyEquipped)?.name ?? currentlyEquipped}`
+              : 'Nothing equipped'}
+          </Text>
+        </View>
+      </GlassCard>
 
       {visibleItems.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon} accessible={false}>🎒</Text>
+          <Icon name="grid" size={48} color={DS.colors.text.tertiary} />
           <Text style={styles.emptyText}>No items owned in this category.</Text>
           <Text style={styles.emptyHint}>Visit the Store to unlock cosmetics.</Text>
         </View>
@@ -202,7 +247,8 @@ export default function InventoryScreen(): React.JSX.Element {
           showsVerticalScrollIndicator={false}
         />
       )}
-    </SafeAreaView>
+      </Animated.View>
+    </ScreenContainer>
   );
 }
 
@@ -211,32 +257,112 @@ export default function InventoryScreen(): React.JSX.Element {
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#070f1e' },
-  title: { color: '#fff', fontSize: 28, fontWeight: '800', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
-  tabRow: { flexDirection: 'row', paddingHorizontal: 12, gap: 8, marginBottom: 4 },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', gap: 3 },
-  tabActive: { backgroundColor: 'rgba(79,195,247,0.15)', borderColor: '#4FC3F7' },
-  tabIcon: { fontSize: 18 },
-  tabLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  tabLabelActive: { color: '#4FC3F7' },
-  equippedStatus: { paddingHorizontal: 20, paddingVertical: 8 },
-  equippedStatusText: { color: 'rgba(255,255,255,0.4)', fontSize: 13 },
-  listContent: { paddingHorizontal: 12, paddingBottom: 32 },
-  columnWrapper: { gap: 10, marginBottom: 10 },
-  card: {
-    flex: 1, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 16, paddingVertical: 16, paddingHorizontal: 8,
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.09)', gap: 6,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.md,
+    paddingHorizontal: DS.spacing.xl,
+    paddingTop: DS.spacing.lg,
+    paddingBottom: DS.spacing.md,
   },
-  cardEquipped: { backgroundColor: 'rgba(79,195,247,0.1)' },
-  cardPressed: { opacity: 0.75 },
-  cardIcon: { fontSize: 30 },
-  cardName: { color: '#fff', fontSize: 11, fontWeight: '600', textAlign: 'center' },
-  tierDot: { width: 8, height: 8, borderRadius: 4 },
-  equippedBadge: { backgroundColor: '#4FC3F7', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  equippedBadgeText: { color: '#070f1e', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  emptyIcon: { fontSize: 48 },
-  emptyText: { color: 'rgba(255,255,255,0.55)', fontSize: 16, fontWeight: '600' },
-  emptyHint: { color: 'rgba(255,255,255,0.3)', fontSize: 13 },
+  pageTitle: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.title1,
+    fontWeight: DS.typography.weight.heavy,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    paddingHorizontal: DS.spacing.md,
+    gap: DS.spacing.sm,
+    marginBottom: DS.spacing.xs,
+  },
+  tabButton: {
+    flex: 1,
+  },
+  equippedStatus: {
+    marginHorizontal: DS.spacing.xl,
+    marginVertical: DS.spacing.sm,
+    paddingHorizontal: DS.spacing.lg,
+    paddingVertical: DS.spacing.md,
+  },
+  equippedStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DS.spacing.sm,
+  },
+  equippedStatusText: {
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.callout,
+    fontWeight: DS.typography.weight.medium,
+  },
+  listContent: {
+    paddingHorizontal: DS.spacing.md,
+    paddingBottom: DS.spacing.xxxl,
+  },
+  columnWrapper: {
+    gap: DS.spacing.sm,
+    marginBottom: DS.spacing.sm,
+  },
+  cardPressable: {
+    flex: 1,
+  },
+  card: {
+    alignItems: 'center',
+    paddingVertical: DS.spacing.lg,
+    paddingHorizontal: DS.spacing.sm,
+    gap: DS.spacing.xs,
+  },
+  cardPressed: {
+    opacity: 0.75,
+  },
+  previewSwatch: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  previewSwatchInner: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  equippedCheck: {
+    position: 'absolute' as const,
+    top: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: DS.colors.success,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  cardName: {
+    color: DS.colors.text.primary,
+    fontSize: DS.typography.size.caption1,
+    fontWeight: DS.typography.weight.semibold,
+    textAlign: 'center',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: DS.spacing.sm,
+  },
+  emptyText: {
+    color: DS.colors.text.secondary,
+    fontSize: DS.typography.size.body,
+    fontWeight: DS.typography.weight.semibold,
+  },
+  emptyHint: {
+    color: DS.colors.text.tertiary,
+    fontSize: DS.typography.size.callout,
+    fontWeight: DS.typography.weight.regular,
+  },
 });

@@ -261,7 +261,7 @@ export function DebugOverlay(): React.ReactElement | null {
   return (
     <View style={styles.container} pointerEvents="none">
       <View style={styles.panel}>
-        <Text style={styles.title}>⚙ DEBUG</Text>
+        <Text style={styles.title}>[DBG] DEBUG</Text>
         <Text style={styles.row}>
           FPS: <Text style={styles.value}>{stats.fps.toFixed(1)}</Text>
         </Text>

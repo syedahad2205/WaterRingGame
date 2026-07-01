@@ -1,0 +1,10 @@
+Note: /Users/vitlap295/VCProjects/personal/WaterRingGame/WaterRingPuzzleGame/node_modules/react-native-gesture-handler/android/paper/src/main/java/com/swmansion/gesturehandler/NativeRNGestureHandlerModuleSpec.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /Users/vitlap295/VCProjects/personal/WaterRingGame/WaterRingPuzzleGame/node_modules/react-native-mmkv/android/src/main/java/com/reactnativemmkv/MmkvModule.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /Users/vitlap295/VCProjects/personal/WaterRingGame/WaterRingPuzzleGame/node_modules/react-native-sound/android/src/main/java/com/zmxv/RNSound/RNSoundModule.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.

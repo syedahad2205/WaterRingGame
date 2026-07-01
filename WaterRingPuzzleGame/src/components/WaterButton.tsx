@@ -32,6 +32,9 @@ import Animated, {
   withSpring,
   Easing,
 } from 'react-native-reanimated';
+import { triggerHaptic } from '../constants/hapticPatterns';
+import { audioEngine } from '../features/audio/AudioEngine';
+import { DS } from '../constants/designSystem';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -106,7 +109,7 @@ export default function WaterButton({
     transform: [{ translateY: pressDepth.value }],
   }));
 
-  // ── Press in: linear 50ms depress ────────────────────────────────────────
+  // ── Press in: linear 50ms depress + haptic ────────────────────────────────
   const handlePressIn = useCallback(
     (event: GestureResponderEvent): void => {
       if (disabled) {
@@ -117,24 +120,31 @@ export default function WaterButton({
         duration: DEPRESS_DURATION_MS,
         easing: Easing.linear,
       });
+      triggerHaptic('waterPress');
       onPressIn?.(event);
     },
     [disabled, isPressed, pressDepth, onPressIn],
   );
 
-  // ── Press out: spring back to 0 over ~150ms ───────────────────────────────
+  // ── Press out: spring back to 0 over ~150ms + water release SFX ───────────
   const handlePressOut = useCallback(
     (event: GestureResponderEvent): void => {
+      // Always reset visual state (spring back the button face)
       isPressed.value = false;
       pressDepth.value = withSpring(0, SPRING_BACK_CONFIG);
+      // Skip gameplay effects if disabled (e.g., game ended mid-press)
+      if (disabled) return;
+      audioEngine.playSFX('water_release', { volume: 0.45 });
       onPressOut?.(event);
     },
-    [isPressed, pressDepth, onPressOut],
+    [disabled, isPressed, pressDepth, onPressOut],
   );
 
-  // Determine button accent colour by side
-  const accentColor = side === 'left' ? '#4FC3F7' : '#81D4FA';
-  const glowColor = side === 'left' ? 'rgba(79,195,247,0.35)' : 'rgba(129,212,250,0.35)';
+  // Determine button accent colour by side — use DS water palette
+  const accentColor = side === 'left' ? DS.colors.water.foam : DS.colors.water.surface;
+  const glowColor = side === 'left'
+    ? 'rgba(100,181,246,0.35)'
+    : 'rgba(33,150,243,0.35)';
 
   return (
     // Outer View is the 88×88 touch target (fulfils WCAG 2.5.5 minimum)
@@ -227,26 +237,22 @@ const styles = StyleSheet.create({
   buttonFace: {
     width: BUTTON_FACE_SIZE,
     height: BUTTON_FACE_SIZE,
-    borderRadius: BUTTON_FACE_SIZE / 2,
-    backgroundColor: 'rgba(13, 35, 66, 0.85)',
-    borderWidth: 2.5,
+    borderRadius: DS.radius.pill,
+    backgroundColor: DS.glass.medium.backgroundColor,
+    borderWidth: DS.glass.medium.borderWidth,
     alignItems: 'center',
     justifyContent: 'center',
-    // Drop shadow (iOS)
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
-    // Elevation (Android)
-    elevation: 8,
+    // Premium glass shadow
+    ...DS.shadows.lg,
   },
   glowRing: {
     position: 'absolute',
-    width: BUTTON_FACE_SIZE + 8,
-    height: BUTTON_FACE_SIZE + 8,
-    borderRadius: (BUTTON_FACE_SIZE + 8) / 2,
+    width: BUTTON_FACE_SIZE + DS.spacing.sm,
+    height: BUTTON_FACE_SIZE + DS.spacing.sm,
+    borderRadius: DS.radius.pill,
   },
   arrowLabel: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: DS.typography.size.title3,
+    fontWeight: DS.typography.weight.bold,
   },
 });

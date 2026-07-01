@@ -56,7 +56,7 @@ export class ReplayRecorder {
 
   startRecording(challengeNumber: number, seed: string, templateId: string): void {
     if (this.recording) {
-      console.warn('[ReplayRecorder] Already recording — call reset() first.');
+      if (__DEV__) console.warn('[ReplayRecorder] Already recording — call reset() first.');
       this.reset();
     }
 
@@ -77,7 +77,7 @@ export class ReplayRecorder {
 
   recordEvent(type: ReplayEventType, metadata?: Record<string, unknown>): void {
     if (!this.recording) {
-      console.warn('[ReplayRecorder] Not recording — call startRecording() first.');
+      if (__DEV__) console.warn('[ReplayRecorder] Not recording — call startRecording() first.');
       return;
     }
 

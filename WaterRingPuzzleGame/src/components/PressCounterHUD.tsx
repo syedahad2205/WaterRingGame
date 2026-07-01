@@ -11,6 +11,7 @@
 
 import React, { useEffect } from 'react';
 import { StyleSheet, ViewStyle } from 'react-native';
+import { DS } from '../constants/designSystem';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -125,7 +126,7 @@ export default function PressCounterHUD({
           isCritical && styles.labelCritical,
         ]}
       >
-        👆 {pressesRemaining}
+        TAP {pressesRemaining}
       </Animated.Text>
     </Animated.View>
   );
@@ -150,15 +151,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,87,34,0.55)',
   },
   label: {
-    color: '#fff',
+    color: DS.colors.text.primary,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   labelLow: {
-    color: '#FFB74D',
+    color: DS.colors.warning,
   },
   labelCritical: {
-    color: '#EF5350',
+    color: DS.colors.error,
   },
 });

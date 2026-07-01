@@ -37,7 +37,7 @@ export class EconomyService {
 
     // Async server sync — fire and forget
     this.syncToServer(userId, entry).catch((err: unknown) => {
-      console.warn('[EconomyService] server sync failed', err);
+      if (__DEV__) console.warn('[EconomyService] server sync failed', err);
     });
   }
 
@@ -53,7 +53,7 @@ export class EconomyService {
     if (success) {
       const entry = createLedgerEntry('spend', amount, sink, this.ledger['salt']);
       this.syncToServer(userId, entry).catch((err: unknown) => {
-        console.warn('[EconomyService] server sync failed', err);
+        if (__DEV__) console.warn('[EconomyService] server sync failed', err);
       });
     }
 
@@ -66,7 +66,7 @@ export class EconomyService {
 
   async initiatePurchase(_productId: string): Promise<PurchaseResult> {
     try {
-      // TODO: wire up real PurchaseService
+      // Pre-production: replace with direct import once RevenueCat SDK is linked
       const { PurchaseService } = await import('./PurchaseService');
       const svc = PurchaseService.getInstance();
       const outcome = await svc.purchase(_productId as Parameters<typeof svc.purchase>[0]);
@@ -92,12 +92,11 @@ export class EconomyService {
   }
 
   private async syncToServer(userId: string, entry: object): Promise<void> {
-    // Dynamic require to avoid circular dependency
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-    const { CloudFunctionsService } = require('../../services/CloudFunctionsService') as {
-      CloudFunctionsService: { call: (fn: string, payload: unknown) => Promise<unknown> };
-    };
-    await CloudFunctionsService.call('economy', { userId, entry });
+    // Dynamic import to avoid circular dependency
+    const { cloudFunctionsService } = await import(
+      '../../services/firebase/CloudFunctionsService'
+    );
+    await cloudFunctionsService.call('creditCoins', { userId, entry });
   }
 }
 

@@ -12,7 +12,6 @@
  * Structure:
  *   RootStack
  *   ├── SplashScreen
- *   ├── LoadingScreen
  *   ├── MainTabs (Bottom Tab navigator)
  *   │   ├── HomeScreen
  *   │   ├── LeaderboardScreen
@@ -36,14 +35,24 @@
  */
 
 import React from 'react';
-import { Text, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
+import { DS } from '@/constants/designSystem';
+import { triggerHaptic } from '@/constants/hapticPatterns';
+import {
+  defaultStackTransition,
+  modalTransition,
+  transparentModalTransition,
+  scaleFadeTransition,
+  crossfadeTransition,
+} from '@/constants/screenTransitions';
+import { Icon, type IconName } from '../components/icons/GameIcons';
+
 // Screens
 import SplashScreen from '@screens/SplashScreen';
-import LoadingScreen from '@screens/LoadingScreen';
 import HomeScreen from '@screens/HomeScreen';
 import GameScreen from '@screens/GameScreen';
 import PauseScreen from '@screens/PauseScreen';
@@ -74,13 +83,25 @@ export type TabParamList = {
 
 export type RootStackParamList = {
   Splash: undefined;
-  Loading: undefined;
   MainTabs: undefined;
-  Game: { challengeNumber?: number; isDaily?: boolean } | undefined;
+  Game: { challengeNumber?: number | string; isDaily?: boolean } | undefined;
   Pause: undefined;
-  Victory: { stars?: 1 | 2 | 3; coinsEarned?: number } | undefined;
-  Defeat: undefined;
-  Continue: undefined;
+  Victory: {
+    stars?: 1 | 2 | 3;
+    coinsEarned?: number;
+    xpEarned?: number;
+    challengeNumber?: number;
+  } | undefined;
+  Defeat: {
+    ringsPlaced?: number;
+    ringsTotal?: number;
+    challengeNumber?: number;
+  } | undefined;
+  Continue: {
+    challengeNumber?: number;
+    ringsPlaced?: number;
+    ringsTotal?: number;
+  } | undefined;
   Achievements: undefined;
   Inventory: undefined;
   Collection: undefined;
@@ -111,17 +132,14 @@ const linking: LinkingOptions<RootStackParamList> = {
 // Tab bar constants (Task 8.1.3)
 // ---------------------------------------------------------------------------
 
-const ACCENT_COLOUR = '#4FC3F7';
-const INACTIVE_COLOUR = '#607080';
-const TAB_BAR_BG = '#0d2137';
 const ACCENT_UNDERLINE_HEIGHT = 3;
 
-/** Maps tab name → emoji icon (swap for SVG when asset pipeline is ready) */
-const TAB_ICONS: Record<string, string> = {
-  Home: '⌂',
-  Leaderboard: '🏆',
-  Store: '🛍',
-  Profile: '👤',
+/** Maps tab route name to the corresponding Icon component name. */
+const TAB_ICON_NAMES: Record<string, IconName> = {
+  Home: 'home',
+  Leaderboard: 'leaderboard',
+  Store: 'store',
+  Profile: 'profile',
 };
 
 // ---------------------------------------------------------------------------
@@ -136,10 +154,10 @@ interface TabIconProps {
 
 /** Renders the tab icon with an accent-coloured underline when active. */
 function TabIcon({ name, focused, color }: TabIconProps): React.JSX.Element {
-  const icon = TAB_ICONS[name] ?? '●';
+  const iconName = TAB_ICON_NAMES[name] ?? 'home';
   return (
     <View style={styles.tabIconContainer} accessible={false}>
-      <Text style={[styles.tabIconText, { color }]}>{icon}</Text>
+      <Icon name={iconName} size={24} color={color} />
       {focused ? <View style={styles.tabActiveUnderline} /> : null}
     </View>
   );
@@ -157,8 +175,7 @@ const Stack = createStackNavigator<RootStackParamList>();
  *
  * - Each tab has `tabBarAccessibilityLabel` per WCAG 2.5.5 (Requirement 33.7)
  * - Active tab shows filled icon + accent colour underline
- * - Haptic `navigationTap` is fired on each tab press via the `listeners` prop
- *   (actual haptic calls wired in once HapticManager service is available)
+ * - Haptic `tabSwitch` (navigationTap) is fired on each tab press via screenListeners
  *
  * Requirements: 34.7, 15.3, 33.6, 33.7
  * Task: 8.1.3
@@ -169,8 +186,8 @@ function MainTabs(): JSX.Element {
       screenOptions={({ route }: { route: { name: string } }) => ({
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: ACCENT_COLOUR,
-        tabBarInactiveTintColor: INACTIVE_COLOUR,
+        tabBarActiveTintColor: DS.colors.primary,
+        tabBarInactiveTintColor: DS.colors.text.tertiary,
         tabBarLabelStyle: styles.tabLabel,
         tabBarAccessibilityLabel: route.name,
         // eslint-disable-next-line react/display-name
@@ -178,6 +195,11 @@ function MainTabs(): JSX.Element {
           <TabIcon name={route.name} focused={focused} color={color} />
         ),
       })}
+      screenListeners={{
+        tabPress: () => {
+          triggerHaptic('tabSwitch');
+        },
+      }}
     >
       <Tab.Screen
         name="Home"
@@ -211,36 +233,63 @@ export default function Navigation(): JSX.Element {
     <NavigationContainer linking={linking}>
       <Stack.Navigator
         initialRouteName="Splash"
-        screenOptions={{ headerShown: false }}
+        screenOptions={{
+          headerShown: false,
+          ...defaultStackTransition,
+        }}
       >
         {/* Entry flow */}
         <Stack.Screen name="Splash" component={SplashScreen} />
-        <Stack.Screen name="Loading" component={LoadingScreen} />
-
         {/* Primary tab area */}
-        <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen
+          name="MainTabs"
+          component={MainTabs}
+          options={{ ...crossfadeTransition }}
+        />
 
         {/* Gameplay */}
-        <Stack.Screen name="Game" component={GameScreen} />
+        <Stack.Screen
+          name="Game"
+          component={GameScreen}
+          options={{ ...scaleFadeTransition, gestureEnabled: false }}
+        />
         <Stack.Screen
           name="Pause"
           component={PauseScreen}
-          options={{ presentation: 'transparentModal', cardStyle: { backgroundColor: 'transparent' } }}
+          options={{
+            presentation: 'transparentModal',
+            gestureEnabled: false,
+            cardStyle: { backgroundColor: 'transparent' },
+            ...transparentModalTransition,
+          }}
         />
         <Stack.Screen
           name="Victory"
           component={VictoryScreen}
-          options={{ presentation: 'modal' }}
+          options={{
+            presentation: 'modal',
+            gestureEnabled: false,
+            ...modalTransition,
+          }}
         />
         <Stack.Screen
           name="Defeat"
           component={DefeatScreen}
-          options={{ presentation: 'modal' }}
+          options={{
+            presentation: 'modal',
+            gestureEnabled: false,
+            ...modalTransition,
+          }}
         />
         <Stack.Screen
           name="Continue"
           component={ContinueScreen}
-          options={{ presentation: 'transparentModal', cardStyle: { backgroundColor: 'transparent' } }}
+          options={{
+            presentation: 'transparentModal',
+            gestureEnabled: false,
+            cardStyle: { backgroundColor: 'transparent' },
+            ...transparentModalTransition,
+          }}
         />
 
         {/* Secondary screens */}
@@ -262,8 +311,8 @@ export default function Navigation(): JSX.Element {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: TAB_BAR_BG,
-    borderTopColor: '#1a3550',
+    backgroundColor: DS.colors.surfaceDark,
+    borderTopColor: DS.colors.glass.border,
     borderTopWidth: 1,
     height: 64,
     paddingBottom: 8,
@@ -278,15 +327,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 40,
   },
-  tabIconText: {
-    fontSize: 22,
-  },
   tabActiveUnderline: {
     position: 'absolute',
     bottom: -6,
     width: 28,
     height: ACCENT_UNDERLINE_HEIGHT,
     borderRadius: ACCENT_UNDERLINE_HEIGHT / 2,
-    backgroundColor: ACCENT_COLOUR,
+    backgroundColor: DS.colors.primary,
   },
 });

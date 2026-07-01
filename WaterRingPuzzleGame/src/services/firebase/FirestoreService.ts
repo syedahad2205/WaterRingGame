@@ -46,7 +46,7 @@ export class FirestoreService {
       if (!snap.exists) return null;
       return snap.data() as UserDocument;
     } catch (e) {
-      console.warn('[FirestoreService] getUser error:', e);
+      if (__DEV__) console.warn('[FirestoreService] getUser error:', e);
       return null;
     }
   }
@@ -55,7 +55,7 @@ export class FirestoreService {
     try {
       await firestore().collection('users').doc(userId).set(data, { merge: true });
     } catch (e) {
-      console.warn('[FirestoreService] setUser error:', e);
+      if (__DEV__) console.warn('[FirestoreService] setUser error:', e);
     }
   }
 
@@ -63,7 +63,7 @@ export class FirestoreService {
     try {
       await firestore().collection('users').doc(userId).update(fields);
     } catch (e) {
-      console.warn('[FirestoreService] updateUser error:', e);
+      if (__DEV__) console.warn('[FirestoreService] updateUser error:', e);
     }
   }
 
@@ -81,10 +81,10 @@ export class FirestoreService {
         .collection(String(challengeNumber))
         .doc('scores')
         .collection(score.userId)
-        .doc(score.userId)
+        .doc('latest')
         .set(score, { merge: false });
     } catch (e) {
-      console.warn('[FirestoreService] submitScore error:', e);
+      if (__DEV__) console.warn('[FirestoreService] submitScore error:', e);
     }
   }
 
@@ -102,7 +102,7 @@ export class FirestoreService {
         .get();
       return snap.docs.map(d => d.data() as ScoreDocument);
     } catch (e) {
-      console.warn('[FirestoreService] getTopScores error:', e);
+      if (__DEV__) console.warn('[FirestoreService] getTopScores error:', e);
       return [];
     }
   }
@@ -119,12 +119,12 @@ export class FirestoreService {
         .collection(String(challengeNumber))
         .doc('scores')
         .collection(userId)
-        .doc(userId)
+        .doc('latest')
         .get();
       if (!snap.exists) return null;
       return snap.data() as ScoreDocument;
     } catch (e) {
-      console.warn('[FirestoreService] getUserScore error:', e);
+      if (__DEV__) console.warn('[FirestoreService] getUserScore error:', e);
       return null;
     }
   }
@@ -135,7 +135,7 @@ export class FirestoreService {
     try {
       await firestore().collection('replays').doc(meta.replayId).set(meta);
     } catch (e) {
-      console.warn('[FirestoreService] saveReplayMeta error:', e);
+      if (__DEV__) console.warn('[FirestoreService] saveReplayMeta error:', e);
     }
   }
 
@@ -145,7 +145,7 @@ export class FirestoreService {
       if (!snap.exists) return null;
       return snap.data() as ReplayMetaDocument;
     } catch (e) {
-      console.warn('[FirestoreService] getReplayMeta error:', e);
+      if (__DEV__) console.warn('[FirestoreService] getReplayMeta error:', e);
       return null;
     }
   }

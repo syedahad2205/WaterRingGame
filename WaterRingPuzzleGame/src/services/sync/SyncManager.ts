@@ -27,12 +27,62 @@ function generateId(): string {
 }
 
 const FUNCTION_MAP: Record<SyncOperation['type'], string> = {
-  user_update: 'submitScore',
+  user_update: 'updateUser',
   score_submit: 'submitScore',
   coin_credit: 'creditCoins',
-  achievement_unlock: 'submitScore',
+  achievement_unlock: 'unlockAchievement',
   replay_upload: 'uploadReplayMeta',
 };
+
+/** Maximum queued operations before oldest are evicted. */
+const MAX_QUEUE_SIZE = 100;
+
+/** MMKV key for persisting the sync queue across app restarts. */
+const SYNC_QUEUE_STORAGE_KEY = 'sync_manager_queue';
+
+// ---------------------------------------------------------------------------
+// Queue persistence helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Persist the sync queue to MMKV so operations survive app crashes.
+ * Uses a dynamic import to avoid a hard compile-time dependency on
+ * the MMKVStorage module (keeps unit tests functional).
+ */
+function persistQueue(queue: SyncOperation[]): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { setItem } = require('../storage/MMKVStorage');
+    setItem(SYNC_QUEUE_STORAGE_KEY, JSON.stringify(queue));
+  } catch {
+    // MMKV unavailable (e.g. Jest environment) — silently ignore.
+  }
+}
+
+/**
+ * Rehydrate the sync queue from MMKV after an app restart.
+ */
+function loadPersistedQueue(): SyncOperation[] {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { getItem } = require('../storage/MMKVStorage');
+    const raw = getItem(SYNC_QUEUE_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Basic shape validation on each entry.
+    return parsed.filter(
+      (op: unknown): op is SyncOperation =>
+        typeof op === 'object' &&
+        op !== null &&
+        typeof (op as SyncOperation).id === 'string' &&
+        typeof (op as SyncOperation).type === 'string' &&
+        typeof (op as SyncOperation).retryCount === 'number',
+    );
+  } catch {
+    return [];
+  }
+}
 
 export class SyncManager {
   private state: SyncState = 'idle';
@@ -44,9 +94,29 @@ export class SyncManager {
   readonly MAX_RETRY = 3;
   readonly SYNC_INTERVAL_MS = 30_000;
 
+  /**
+   * Rehydrate any operations that were queued before the last app exit/crash.
+   * Call once at app startup.
+   */
+  rehydrate(): void {
+    const persisted = loadPersistedQueue();
+    if (persisted.length > 0) {
+      this.queue = persisted;
+      if (__DEV__) {
+        console.log(`[SyncManager] Rehydrated ${persisted.length} queued operations.`);
+      }
+    }
+  }
+
   enqueue(
     op: Omit<SyncOperation, 'id' | 'retryCount' | 'createdAt'>,
   ): void {
+    // Guard: reject null/undefined/empty payloads to prevent corrupt sync ops.
+    if (!op || !op.type || !op.payload || typeof op.payload !== 'object') {
+      if (__DEV__) console.warn('[SyncManager] Rejected enqueue with invalid operation:', op);
+      return;
+    }
+
     const operation: SyncOperation = {
       ...op,
       id: generateId(),
@@ -54,6 +124,15 @@ export class SyncManager {
       createdAt: Date.now(),
     };
     this.queue.push(operation);
+
+    // Evict oldest operations if queue exceeds max size.
+    if (this.queue.length > MAX_QUEUE_SIZE) {
+      this.queue = this.queue.slice(this.queue.length - MAX_QUEUE_SIZE);
+    }
+
+    // Persist to MMKV so the operation survives a crash.
+    persistQueue(this.queue);
+
     if (this.state !== 'offline' && this.state !== 'syncing') {
       void this.flush();
     }
@@ -61,12 +140,15 @@ export class SyncManager {
 
   // eslint-disable-next-line max-lines-per-function
   async flush(): Promise<void> {
+    // Double-flush guard: if already flushing, skip entirely.
     if (this.isFlushing || this.queue.length === 0) return;
 
     this.isFlushing = true;
     this.state = 'syncing';
     this.error = null;
 
+    // Snapshot the queue — new enqueue() calls during flush will be picked
+    // up on the next flush cycle, not re-processed in this one.
     const toProcess = [...this.queue];
     let allSucceeded = true;
 
@@ -87,7 +169,7 @@ export class SyncManager {
             retryCount: this.queue[idx].retryCount + 1,
           };
           if (this.queue[idx].retryCount >= this.MAX_RETRY) {
-            console.warn(
+            if (__DEV__) console.warn(
               `[SyncManager] Operation ${op.id} (${op.type}) exceeded MAX_RETRY. Dropping.`,
             );
             this.removeFromQueue(op.id);
@@ -96,6 +178,9 @@ export class SyncManager {
         this.error = result.error ?? 'Unknown sync error';
       }
     }
+
+    // Persist updated queue state after flush completes.
+    persistQueue(this.queue);
 
     this.lastSyncAt = Date.now();
     this.state = allSucceeded ? 'success' : 'failed';

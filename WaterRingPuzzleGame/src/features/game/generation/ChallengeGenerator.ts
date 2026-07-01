@@ -18,6 +18,8 @@ import {
   timerBase,
 } from './DifficultyCalculator';
 import { selectTemplate } from './TemplateRegistry';
+import { ValidationSolver } from './ValidationSolver';
+import { scoreChallenge } from './ChallengeScorer';
 import type {
   ChallengeConfig,
   RingConfig,
@@ -307,7 +309,10 @@ function buildRings(
       colorId: peg.acceptedColorId,
       skinId: 'default',
       isDecoy: false,
-      initialPosition: positions[i],
+      initialPosition: positions[i] ?? {
+        x: 40 + prng.nextFloat() * (ARENA_WIDTH - 80),
+        y: WATER_SURFACE_Y + 20 + prng.nextFloat() * (ARENA_HEIGHT * 0.15),
+      },
     });
   }
 
@@ -427,6 +432,9 @@ function buildPhysicsModifiers(template: {
 
 // ─── Step 12: Challenge Intelligence Metadata ────────────────────────────────
 
+/** Shared ValidationSolver instance (stateless, safe to reuse). */
+const solver = new ValidationSolver();
+
 // eslint-disable-next-line max-lines-per-function
 function buildIntelligenceMetadata(
   _d: number,
@@ -435,12 +443,17 @@ function buildIntelligenceMetadata(
   template: { id: string },
   pegs: PegConfig[],
   rings: RingConfig[],
+  partialConfig: ChallengeConfig,
 ): { estimatedSolveTimeSecs: number; successfulSolverStrategies: number[]; qualityScore: number; difficultyDrivers: string[] } {
   const predictedSolveTime = timer.totalSeconds * 0.6;
-  // Placeholder until task 6.4.1 (ValidationSolver) is implemented.
-  const successfulSolverStrategies = [0, 1];
-  // Placeholder until task 6.4.2 (ChallengeScorer) is implemented.
-  const qualityScore = 0.75;
+
+  // Run the ValidationSolver to determine which strategies succeed.
+  const solvabilityResult = solver.validate(partialConfig);
+  const successfulSolverStrategies = solvabilityResult.solverStrategies;
+
+  // Run the ChallengeScorer to compute the composite quality score.
+  const qualityResult = scoreChallenge(partialConfig, solvabilityResult);
+  const qualityScore = qualityResult.overall;
 
   // Build difficulty driver descriptions based on challenge parameters.
   const difficultyDrivers: string[] = [];
@@ -553,9 +566,16 @@ function runPipeline(
   // environmentId already set in Step 3.
 
   // ── Step 12: Challenge Intelligence Metadata ──────────────────────────────
-  const intelligenceMetadata = buildIntelligenceMetadata(d, nd, timer, template, pegs, rings);
+  // Build a partial config with placeholder intelligence metadata so that
+  // the ValidationSolver and ChallengeScorer can inspect the full config.
+  const placeholderMetadata = {
+    estimatedSolveTimeSecs: timer.totalSeconds * 0.6,
+    successfulSolverStrategies: [] as number[],
+    qualityScore: 0,
+    difficultyDrivers: [] as string[],
+  };
 
-  return {
+  const partialConfig: ChallengeConfig = {
     challengeNumber,
     dailyDate,
     seed: encodeChallengeCode(challengeNumber),
@@ -570,10 +590,15 @@ function runPipeline(
     obstacles,
     waterCurrentProfile,
     physicsModifiers,
-    intelligenceMetadata,
+    intelligenceMetadata: placeholderMetadata,
     isBossChallenge: isBoss,
     isDailyChallenge: isDaily,
   };
+
+  const intelligenceMetadata = buildIntelligenceMetadata(d, nd, timer, template, pegs, rings, partialConfig);
+  partialConfig.intelligenceMetadata = intelligenceMetadata;
+
+  return partialConfig;
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -584,6 +609,12 @@ function runPipeline(
  * Requirements: 1.6, 11.1, 11.2, 11.3, 11.6
  */
 export function generateChallenge(challengeNumber: number): ChallengeConfig {
+  // Sanitise input — clamp to safe integer range, default NaN/Infinity to 1
+  if (!Number.isFinite(challengeNumber) || challengeNumber < 1) {
+    challengeNumber = 1;
+  }
+  challengeNumber = Math.floor(challengeNumber);
+
   const prng = deriveMasterSeed(challengeNumber);
   const isBoss = challengeNumber > 0 && challengeNumber % 50 === 0;
   return runPipeline(prng, challengeNumber, '', isBoss, false);

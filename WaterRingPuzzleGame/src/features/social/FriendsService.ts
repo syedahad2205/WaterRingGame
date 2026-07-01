@@ -78,7 +78,7 @@ export class FriendsService {
         .doc(docId)
         .set(request);
     } catch (err) {
-      console.warn('[FriendsService] sendFriendRequest failed:', err);
+      if (__DEV__) console.warn('[FriendsService] sendFriendRequest failed:', err);
       throw err;
     }
   }
@@ -162,7 +162,7 @@ export class FriendsService {
 
       await batch.commit();
     } catch (err) {
-      console.warn('[FriendsService] acceptFriendRequest failed:', err);
+      if (__DEV__) console.warn('[FriendsService] acceptFriendRequest failed:', err);
       throw err;
     }
   }
@@ -183,7 +183,7 @@ export class FriendsService {
         .doc(docId)
         .update({ status: 'declined' });
     } catch (err) {
-      console.warn('[FriendsService] declineFriendRequest failed:', err);
+      if (__DEV__) console.warn('[FriendsService] declineFriendRequest failed:', err);
       throw err;
     }
   }
@@ -219,7 +219,7 @@ export class FriendsService {
 
       await batch.commit();
     } catch (err) {
-      console.warn('[FriendsService] removeFriend failed:', err);
+      if (__DEV__) console.warn('[FriendsService] removeFriend failed:', err);
       throw err;
     }
   }
@@ -239,7 +239,7 @@ export class FriendsService {
 
       return snap.docs.map((doc) => doc.data() as Friend);
     } catch (err) {
-      console.warn('[FriendsService] getFriends failed:', err);
+      if (__DEV__) console.warn('[FriendsService] getFriends failed:', err);
       throw err;
     }
   }
@@ -259,7 +259,7 @@ export class FriendsService {
 
       return snap.docs.map((doc) => doc.data() as FriendRequest);
     } catch (err) {
-      console.warn('[FriendsService] getPendingRequests failed:', err);
+      if (__DEV__) console.warn('[FriendsService] getPendingRequests failed:', err);
       throw err;
     }
   }
@@ -295,7 +295,7 @@ export class FriendsService {
         };
       });
     } catch (err) {
-      console.warn('[FriendsService] searchUsers failed:', err);
+      if (__DEV__) console.warn('[FriendsService] searchUsers failed:', err);
       throw err;
     }
   }
@@ -316,7 +316,7 @@ export class FriendsService {
 
       return doc.exists;
     } catch (err) {
-      console.warn('[FriendsService] isFriend failed:', err);
+      if (__DEV__) console.warn('[FriendsService] isFriend failed:', err);
       throw err;
     }
   }

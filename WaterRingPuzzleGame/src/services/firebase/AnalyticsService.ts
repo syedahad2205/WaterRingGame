@@ -11,6 +11,7 @@
  * Requirements: 31.1–31.4
  */
 import { AppState, AppStateStatus, Platform } from 'react-native';
+import { version as APP_VERSION_FROM_PACKAGE } from '../../../package.json';
 import analytics from '@react-native-firebase/analytics';
 import crashlytics from '@react-native-firebase/crashlytics';
 import { gameEventEmitter } from '../../utils/GameEventEmitter';
@@ -41,7 +42,7 @@ interface PendingEvent {
 
 const FLUSH_INTERVAL_MS = 10_000;
 const GENERATOR_VERSION = '1.0.0';
-const APP_VERSION = '1.0.0';
+const APP_VERSION = APP_VERSION_FROM_PACKAGE;
 
 // ---------------------------------------------------------------------------
 // AnalyticsService class
@@ -58,6 +59,7 @@ export class AnalyticsService {
   private queue: PendingEvent[] = [];
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private appStateSubscription: { remove: () => void } | null = null;
+  private gameEventUnsubscribes: Array<() => void> = [];
 
   // -------------------------------------------------------------------------
   // Lifecycle
@@ -82,6 +84,11 @@ export class AnalyticsService {
       this.flushTimer = null;
     }
     this.appStateSubscription?.remove();
+    // Unsubscribe from all game event emitter subscriptions
+    for (const unsub of this.gameEventUnsubscribes) {
+      unsub();
+    }
+    this.gameEventUnsubscribes = [];
     this.flush();
   }
 
@@ -178,9 +185,10 @@ export class AnalyticsService {
   // eslint-disable-next-line max-lines-per-function
   private subscribeToGameEvents(): void {
     const sub = (event: string, mapper: (data?: unknown) => Record<string, unknown>): void => {
-      gameEventEmitter.subscribe(event as import('../../utils/GameEventEmitter').GameEventName, (data: unknown) => {
+      const unsub = gameEventEmitter.subscribe(event as import('../../utils/GameEventEmitter').GameEventName, (data: unknown) => {
         this.logEvent(event, mapper(data));
       });
+      this.gameEventUnsubscribes.push(unsub);
     };
 
     // --- Gameplay lifecycle ---
@@ -203,7 +211,6 @@ export class AnalyticsService {
     sub('simultaneous_press',      d => ({ ...d as object }));
 
     // --- Physics ---
-    sub('physics_nan_recovery',      d => ({ ...d as object }));
     sub('stuck_detection_nudge',     d => ({ ...d as object }));
     sub('stuck_detection_teleport',  d => ({ ...d as object }));
 

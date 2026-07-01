@@ -155,11 +155,11 @@ describe('Achievement unlock → analytics + haptic chain (task 11.2.2b)', () =>
     expect(emitCalls.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('evaluate() returns empty array (stateless stub)', () => {
+  it('evaluate() returns newly unlocked achievement ids', () => {
     const engine = new AchievementEngine();
     const result = engine.evaluate({ ...zeroSnapshot(), challengesCompleted: 1 });
-    // The evaluate() method is documented as returning [] (callers use getProgress)
     expect(Array.isArray(result)).toBe(true);
+    expect(result).toContain('first_win');
   });
 
   it('getProgress progress value is clamped to conditionValue', () => {

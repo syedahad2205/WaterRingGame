@@ -49,7 +49,7 @@ class TextureAtlasManagerClass {
     for (const entry of entries) {
       if (entry.loaded) continue;
       if (this.totalLoadedBytes + entry.estimatedSizeBytes > ATLAS_BUDGET_BYTES) {
-        console.warn(`[TextureAtlasManager] Skipping ${entry.id}: would exceed 50MB budget`);
+        if (__DEV__) console.warn(`[TextureAtlasManager] Skipping ${entry.id}: would exceed 50MB budget`);
         continue;
       }
       try {
@@ -57,7 +57,7 @@ class TextureAtlasManagerClass {
         entry.loaded = true;
         this.totalLoadedBytes += entry.estimatedSizeBytes;
       } catch (e) {
-        console.error(`[TextureAtlasManager] Failed to load atlas ${entry.id}:`, e);
+        if (__DEV__) console.error(`[TextureAtlasManager] Failed to load atlas ${entry.id}:`, e);
       }
     }
   }

@@ -7,7 +7,9 @@ export type FunctionName =
   | 'getDailyChallenge'
   | 'getLeaderboard'
   | 'uploadReplayMeta'
-  | 'reportAntiCheat';
+  | 'reportAntiCheat'
+  | 'updateUser'
+  | 'unlockAchievement';
 
 export interface FunctionCallOptions {
   timeoutMs?: number;
@@ -61,7 +63,7 @@ export class CloudFunctionsService {
       };
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      console.warn(`[CloudFunctionsService] call("${name}") error:`, message);
+      if (__DEV__) console.warn(`[CloudFunctionsService] call("${name}") error:`, message);
       return {
         data: null as unknown as TResult,
         success: false,
@@ -74,7 +76,7 @@ export class CloudFunctionsService {
     if (this.emulatorConfigured) return;
     functions().useEmulator(host, port);
     this.emulatorConfigured = true;
-    console.log(`[CloudFunctionsService] Using emulator at ${host}:${port}`);
+    if (__DEV__) console.log(`[CloudFunctionsService] Using emulator at ${host}:${port}`);
   }
 }
 

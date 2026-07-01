@@ -34,6 +34,10 @@ export interface AccessibilitySettings {
   colorBlindMode: boolean;
   colorBlindPreset: ColorBlindPreset;
   highContrast: boolean;
+  // Epic 17 additions
+  reducedMotionOverride: boolean;
+  motorAccessibilityMode: boolean;
+  largeTextMode: boolean;
 }
 
 export interface SettingsState {
@@ -123,6 +127,9 @@ export const useSettingsStore = create<SettingsStore>()(
           colorBlindMode: accessibility.colorBlindMode ?? state.colorBlindMode,
           colorBlindPreset: accessibility.colorBlindPreset ?? state.colorBlindPreset,
           highContrast: accessibility.highContrast ?? state.highContrast,
+          reducedMotionOverride: accessibility.reducedMotionOverride ?? state.reducedMotionOverride,
+          motorAccessibilityMode: accessibility.motorAccessibilityMode ?? state.motorAccessibilityMode,
+          largeTextMode: accessibility.largeTextMode ?? state.largeTextMode,
         })),
 
       updateLanguage: (language: string): void => set({ language }),

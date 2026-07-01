@@ -3,11 +3,9 @@
  *
  * Compresses ReplayData for storage and transmission.
  *
- * TODO: Replace the JSON→base64 fallback with a native LZ4 binding
- *       (e.g. react-native-lz4) once available in the project.  The current
- *       implementation is a pure-JS fallback that achieves moderate size
- *       reduction via JSON serialisation + base64 encoding.  Real LZ4 would
- *       require a native module and is intentionally deferred.
+ * Uses a pure-JS base64 encoding approach compatible with React Native
+ * (no Node.js Buffer dependency). Replace with native LZ4 binding
+ * (e.g. react-native-lz4) once available in the project for better ratios.
  */
 
 import type { ReplayData } from './ReplayRecorder';
@@ -23,6 +21,63 @@ export interface CompressedReplay {
 }
 
 // ---------------------------------------------------------------------------
+// Base64 helpers (React Native compatible, no Node.js Buffer)
+// ---------------------------------------------------------------------------
+
+const BASE64_CHARS =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/** Encode a UTF-8 string to base64 without Buffer. */
+function utf8ToBase64(str: string): string {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);
+  let result = '';
+  const len = bytes.length;
+  for (let i = 0; i < len; i += 3) {
+    const b0 = bytes[i];
+    const b1 = i + 1 < len ? bytes[i + 1] : 0;
+    const b2 = i + 2 < len ? bytes[i + 2] : 0;
+    result += BASE64_CHARS[(b0 >> 2) & 0x3f];
+    result += BASE64_CHARS[((b0 << 4) | (b1 >> 4)) & 0x3f];
+    result += i + 1 < len ? BASE64_CHARS[((b1 << 2) | (b2 >> 6)) & 0x3f] : '=';
+    result += i + 2 < len ? BASE64_CHARS[b2 & 0x3f] : '=';
+  }
+  return result;
+}
+
+/** Decode a base64 string to UTF-8 without Buffer. */
+function base64ToUtf8(base64: string): string {
+  const lookup = new Uint8Array(128);
+  for (let i = 0; i < BASE64_CHARS.length; i++) {
+    lookup[BASE64_CHARS.charCodeAt(i)] = i;
+  }
+
+  const stripped = base64.replace(/=+$/, '');
+  const byteLen = (stripped.length * 3) >> 2;
+  const bytes = new Uint8Array(byteLen);
+  let p = 0;
+
+  for (let i = 0; i < stripped.length; i += 4) {
+    const a = lookup[stripped.charCodeAt(i)];
+    const b = lookup[stripped.charCodeAt(i + 1)];
+    const c = lookup[stripped.charCodeAt(i + 2)];
+    const d = lookup[stripped.charCodeAt(i + 3)];
+    bytes[p++] = (a << 2) | (b >> 4);
+    if (p < byteLen) bytes[p++] = ((b << 4) | (c >> 2)) & 0xff;
+    if (p < byteLen) bytes[p++] = ((c << 6) | d) & 0xff;
+  }
+
+  const decoder = new TextDecoder();
+  return decoder.decode(bytes);
+}
+
+/** Compute byte length of a UTF-8 string without Buffer. */
+function utf8ByteLength(str: string): number {
+  const encoder = new TextEncoder();
+  return encoder.encode(str).length;
+}
+
+// ---------------------------------------------------------------------------
 // ReplayCompressor
 // ---------------------------------------------------------------------------
 
@@ -32,18 +87,13 @@ export class ReplayCompressor {
   // -------------------------------------------------------------------------
 
   compress(replay: ReplayData): CompressedReplay {
-    // Serialise to JSON
     const json = JSON.stringify(replay);
+    const originalSizeBytes = utf8ByteLength(json);
 
-    // TODO: Apply LZ4 compression here once a native module is available.
-    // For now, we use base64 encoding of the raw JSON bytes as a
-    // wire-safe container.  This is not a lossy transformation.
-    const originalSizeBytes = Buffer.byteLength(json, 'utf8');
-
-    // base64 of UTF-8 bytes — ~1.33× the raw size, but avoids binary
+    // base64 of UTF-8 bytes — ~1.33x the raw size, but avoids binary
     // transmission issues and pairs cleanly with the decompressor.
-    const encoded = Buffer.from(json, 'utf8').toString('base64');
-    const compressedSizeBytes = Buffer.byteLength(encoded, 'utf8');
+    const encoded = utf8ToBase64(json);
+    const compressedSizeBytes = utf8ByteLength(encoded);
 
     const compressionRatio =
       originalSizeBytes > 0 ? compressedSizeBytes / originalSizeBytes : 1;
@@ -68,8 +118,31 @@ export class ReplayCompressor {
       );
     }
 
-    const json = Buffer.from(compressed.data, 'base64').toString('utf8');
-    const replay = JSON.parse(json) as ReplayData;
+    if (!compressed.data || typeof compressed.data !== 'string') {
+      throw new Error('[ReplayCompressor] Missing or invalid compressed data field.');
+    }
+
+    let json: string;
+    try {
+      json = base64ToUtf8(compressed.data);
+    } catch (e) {
+      throw new Error(
+        `[ReplayCompressor] Failed to decode base64 data — replay may be corrupted: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      );
+    }
+
+    let replay: ReplayData;
+    try {
+      replay = JSON.parse(json) as ReplayData;
+    } catch (e) {
+      throw new Error(
+        `[ReplayCompressor] Failed to parse replay JSON — data may be truncated or corrupted: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      );
+    }
 
     if (replay.version !== 1) {
       throw new Error(
@@ -95,7 +168,6 @@ export class ReplayCompressor {
     _eventCount: number,
     useLZ4 = false,
   ): number {
-    // TODO: remove useLZ4 flag and always return 0.4 once LZ4 is integrated.
     return useLZ4 ? 0.4 : 1.33;
   }
 }

@@ -2,9 +2,9 @@
  * AudioEngine — Three-layer adaptive audio orchestrator
  *
  * Manages three independent audio layers:
- *   Layer 1: SFX    (react-native-sound)         — discrete game event sounds
- *   Layer 2: Ambient (looping background sounds) — per-theme environment loops
- *   Layer 3: Music  (react-native-track-player)  — adaptive stem-based music
+ *   Layer 1: SFX     (react-native-sound via SFXManager) — discrete game event sounds
+ *   Layer 2: Ambient  (react-native-sound)               — per-theme environment loops
+ *   Layer 3: Music    (react-native-sound via MusicLayerManager) — adaptive stem-based music
  *
  * Platform audio session is configured to duck external audio on both iOS
  * and Android. All native audio API calls are wrapped in try/catch for
@@ -12,6 +12,11 @@
  *
  * Requirements: 14.1, 14.2, 14.5
  */
+
+import Sound from 'react-native-sound';
+import { SFXManager, type SFXEventName } from './SFXManager';
+import { MusicLayerManager } from './MusicLayerManager';
+import { SOUND_MAP, getThemeAmbient } from '../../constants/audioMap';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,10 +76,6 @@ interface AudioEngineState {
 
 /**
  * All supported SFX event names.
- *
- * Audio files are not yet available; every call is a documented no-op
- * that logs the event at debug level. When assets are added, replace
- * the log call with the corresponding react-native-sound play() call.
  *
  * Requirements: 14.1 (playSFX interface)
  */
@@ -186,7 +187,7 @@ function configurePlatformAudioSession(): void {
     //   iOS  → AVAudioSession.setCategory(.playback, options: .duckOthers)
     //   Android → AudioFocusRequest(AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
   } catch (err) {
-    console.warn('[AudioEngine] configurePlatformAudioSession failed (non-fatal):', err);
+    if (__DEV__) console.warn('[AudioEngine] configurePlatformAudioSession failed (non-fatal):', err);
   }
 }
 
@@ -204,6 +205,10 @@ function configurePlatformAudioSession(): void {
  */
 export class AudioEngine {
   private _state: AudioEngineState;
+  private _sfxManager: SFXManager;
+  private _musicLayerManager: MusicLayerManager;
+  /** Currently playing ambient loop Sound instance (one per theme). */
+  private _ambientLoop: Sound | null = null;
 
   constructor() {
     this._state = {
@@ -221,6 +226,8 @@ export class AudioEngine {
       sfxMuteListeners: [],
     };
 
+    this._sfxManager = new SFXManager();
+    this._musicLayerManager = new MusicLayerManager();
     configurePlatformAudioSession();
   }
 
@@ -239,10 +246,10 @@ export class AudioEngine {
       this._state.activeThemeId = themeId;
       this._state.prePauseStemVolumes = null;
       this._transitionMusicState('challenge_start');
-      // TODO: start ambient loop for themeId when audio assets are available
+      this._startAmbientLoop(themeId);
       this._logAudioEvent('startChallenge', { themeId });
     } catch (err) {
-      console.warn('[AudioEngine] startChallenge failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] startChallenge failed (non-fatal):', err);
     }
   }
 
@@ -260,7 +267,7 @@ export class AudioEngine {
       this._transitionMusicState('first_ring_moved');
       this._logAudioEvent('onFirstRingMoved');
     } catch (err) {
-      console.warn('[AudioEngine] onFirstRingMoved failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] onFirstRingMoved failed (non-fatal):', err);
     }
   }
 
@@ -278,7 +285,7 @@ export class AudioEngine {
       this._transitionMusicState('first_ring_landed');
       this._logAudioEvent('onFirstRingLanded');
     } catch (err) {
-      console.warn('[AudioEngine] onFirstRingLanded failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] onFirstRingLanded failed (non-fatal):', err);
     }
   }
 
@@ -300,7 +307,7 @@ export class AudioEngine {
       this._transitionMusicState('midpoint');
       this._logAudioEvent('onChallengeMidpoint');
     } catch (err) {
-      console.warn('[AudioEngine] onChallengeMidpoint failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] onChallengeMidpoint failed (non-fatal):', err);
     }
   }
 
@@ -316,7 +323,7 @@ export class AudioEngine {
       this.playSFX('timer_warning_amber');
       this._logAudioEvent('onTimerAmber');
     } catch (err) {
-      console.warn('[AudioEngine] onTimerAmber failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] onTimerAmber failed (non-fatal):', err);
     }
   }
 
@@ -332,7 +339,7 @@ export class AudioEngine {
       this.playSFX('timer_warning_red');
       this._logAudioEvent('onTimerCritical');
     } catch (err) {
-      console.warn('[AudioEngine] onTimerCritical failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] onTimerCritical failed (non-fatal):', err);
     }
   }
 
@@ -345,15 +352,14 @@ export class AudioEngine {
   onVictory(): void {
     try {
       this._transitionMusicState('victory');
-      // Stop ambient loop
-      // TODO: fade out ambient loop when assets available
+      this._fadeOutAmbientLoop(FADE_DURATIONS.victory);
       // Schedule victory sting after fade completes
       this._scheduleAfter(FADE_DURATIONS.victory, () => {
         this.playSFX('victory');
       });
       this._logAudioEvent('onVictory');
     } catch (err) {
-      console.warn('[AudioEngine] onVictory failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] onVictory failed (non-fatal):', err);
     }
   }
 
@@ -366,13 +372,13 @@ export class AudioEngine {
   onDefeat(): void {
     try {
       this._transitionMusicState('defeat');
-      // TODO: fade out ambient loop when assets available
+      this._fadeOutAmbientLoop(FADE_DURATIONS.defeat);
       this._scheduleAfter(FADE_DURATIONS.defeat, () => {
         this.playSFX('defeat');
       });
       this._logAudioEvent('onDefeat');
     } catch (err) {
-      console.warn('[AudioEngine] onDefeat failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] onDefeat failed (non-fatal):', err);
     }
   }
 
@@ -406,9 +412,17 @@ export class AudioEngine {
       this._state.musicState = 'paused';
 
       this._applyNativeVolumes(pausedStems, FADE_DURATIONS.pause);
+
+      // Duck ambient loop to match pause level
+      if (this._ambientLoop) {
+        this._ambientLoop.setVolume(
+          this._state.volumes.ambient * this._state.volumes.master * PAUSE_MUSIC_VOLUME,
+        );
+      }
+
       this._logAudioEvent('pause');
     } catch (err) {
-      console.warn('[AudioEngine] pause failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] pause failed (non-fatal):', err);
     }
   }
 
@@ -423,21 +437,27 @@ export class AudioEngine {
         return; // not paused — nothing to do
       }
 
-      const targetVolumes = this._state.prePauseStemVolumes ?? STEM_TARGETS[this._state.musicState];
+      // Restore pre-pause stem volumes. Fall back to challenge_start if the
+      // snapshot was somehow lost (never silence -- that would be the 'paused'
+      // entry in STEM_TARGETS which is all zeros).
+      const targetVolumes = this._state.prePauseStemVolumes ?? STEM_TARGETS['challenge_start'];
       this._state.stemVolumes = { ...targetVolumes };
       this._state.prePauseStemVolumes = null;
 
-      // Determine which state we were in before the pause (based on stem profile).
-      // We restore to the last substantive music state stored in prePauseStemVolumes.
-      // The music state is set back to the closest matching substantive state.
-      // For simplicity, we use the stem targets to find the most likely prior state.
+      // Restore the music state label that matches the pre-pause stem profile.
       const restoredState = this._inferStateFromVolumes(targetVolumes);
       this._state.musicState = restoredState;
 
       this._applyNativeVolumes(targetVolumes, FADE_DURATIONS.resume);
+
+      // Restore ambient loop volume
+      if (this._ambientLoop) {
+        this._ambientLoop.setVolume(this._state.volumes.ambient * this._state.volumes.master);
+      }
+
       this._logAudioEvent('resume');
     } catch (err) {
-      console.warn('[AudioEngine] resume failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] resume failed (non-fatal):', err);
     }
   }
 
@@ -446,16 +466,12 @@ export class AudioEngine {
   // -------------------------------------------------------------------------
 
   /**
-   * Plays a discrete sound effect.
-   *
-   * All events are currently no-ops (assets not yet available).
-   * When audio assets are added, each event maps to a specific sound file
-   * loaded via react-native-sound.
+   * Plays a discrete sound effect via SFXManager.
    *
    * If SFX is muted (sfxVolume = 0 or muted flag), the call is skipped
    * and UI compensation cues are signalled via sfxMuteListeners.
    *
-   * Requirement: 14.1 (playSFX interface), 14.6 (SFX mute → UI notification)
+   * Requirement: 14.1 (playSFX interface), 14.6 (SFX mute -> UI notification)
    */
   playSFX(event: string, options?: Record<string, unknown>): void {
     try {
@@ -472,14 +488,17 @@ export class AudioEngine {
         this._notifySFXMuteListeners(false);
       }
 
-      // TODO: Load and play the sound file for this event via react-native-sound.
-      // Example (when assets available):
-      //   const sound = new Sound(`${event}.mp3`, Sound.MAIN_BUNDLE, (err) => {
-      //     if (!err) sound.play();
-      //   });
+      // Delegate to SFXManager for actual playback
+      this._sfxManager.setMasterVolume(this._state.volumes.sfx * this._state.volumes.master);
+      this._sfxManager.play(event as SFXEventName, {
+        volume: (options?.volume as number) ?? undefined,
+        pitch: (options?.pitch as number) ?? undefined,
+        panning: (options?.panning as number) ?? undefined,
+      });
+
       this._logAudioEvent('playSFX', { event, options });
     } catch (err) {
-      console.warn('[AudioEngine] playSFX failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] playSFX failed (non-fatal):', err);
     }
   }
 
@@ -497,7 +516,7 @@ export class AudioEngine {
       this._state.volumes.master = this._clamp(v);
       this._applyMasterVolume();
     } catch (err) {
-      console.warn('[AudioEngine] setMasterVolume failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] setMasterVolume failed (non-fatal):', err);
     }
   }
 
@@ -511,7 +530,7 @@ export class AudioEngine {
       this._state.volumes.music = this._clamp(v);
       this._applyNativeVolumes(this._state.stemVolumes, 0);
     } catch (err) {
-      console.warn('[AudioEngine] setMusicVolume failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] setMusicVolume failed (non-fatal):', err);
     }
   }
 
@@ -533,7 +552,7 @@ export class AudioEngine {
         this._notifySFXMuteListeners(isMuted);
       }
     } catch (err) {
-      console.warn('[AudioEngine] setSFXVolume failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] setSFXVolume failed (non-fatal):', err);
     }
   }
 
@@ -611,26 +630,27 @@ export class AudioEngine {
   }
 
   /**
-   * Applies the effective native volumes to the react-native-track-player stems.
-   * Effective volume = stem target × music layer volume × master volume.
+   * Applies the effective native volumes to the MusicLayerManager stems.
+   * Effective volume = stem target x music layer volume x master volume.
    *
    * All calls are wrapped to ensure graceful degradation when native modules
    * are unavailable (simulator, test environment).
    */
   private _applyNativeVolumes(
     stemVolumes: StemVolumes,
-    _fadeDurationMs: number,
+    fadeDurationMs: number,
   ): void {
     try {
       const effective = this._computeEffectiveVolumes(stemVolumes);
-      // TODO: when react-native-track-player is configured with stems, call:
-      //   TrackPlayer.setVolume(effective.base); // or per-track volume API
-      //
-      // For now, we store the effective volumes for inspection in tests.
       this._state.stemVolumes = stemVolumes;
-      void effective; // suppress unused variable warning until native calls are wired
+
+      // Delegate to MusicLayerManager for actual native volume application
+      this._musicLayerManager.setAllStemsVolume(
+        effective as unknown as Record<string, number>,
+        fadeDurationMs,
+      );
     } catch (err) {
-      console.warn('[AudioEngine] _applyNativeVolumes failed (non-fatal):', err);
+      if (__DEV__) console.warn('[AudioEngine] _applyNativeVolumes failed (non-fatal):', err);
     }
   }
 
@@ -700,9 +720,123 @@ export class AudioEngine {
       try {
         listener(muted);
       } catch (err) {
-        console.warn('[AudioEngine] sfxMuteListener threw (non-fatal):', err);
+        if (__DEV__) console.warn('[AudioEngine] sfxMuteListener threw (non-fatal):', err);
       }
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // Ambient loop management
+  // -------------------------------------------------------------------------
+
+  /**
+   * Starts an ambient background loop for the given theme.
+   * Resolves the ambient sound via SOUND_MAP and getThemeAmbient().
+   *
+   *   iOS     : file path from SOUND_MAP (e.g. 'ambient/water_ambient.mp3')
+   *   Android : flattened resource name without extension (e.g. 'ambient_water_ambient')
+   */
+  private _startAmbientLoop(themeId: string): void {
+    try {
+      // Stop any existing ambient loop first
+      this._stopAmbientLoop();
+
+      let isAndroid = false;
+      try {
+        const { Platform } = require('react-native') as { Platform: { OS: string } };
+        isAndroid = Platform.OS === 'android';
+      } catch {
+        // Not in RN environment
+      }
+
+      const ambientSoundName = getThemeAmbient(themeId);
+      const ambientAsset = SOUND_MAP[ambientSoundName];
+      const filePath = ambientAsset.file; // e.g. 'ambient/water_ambient.mp3'
+      const path = isAndroid
+        ? filePath.replace(/\.\w+$/, '').replace(/\//g, '_') // 'ambient_water_ambient'
+        : filePath;
+      const effectiveVolume = this._state.volumes.ambient * this._state.volumes.master;
+
+      this._ambientLoop = new Sound(path, Sound.MAIN_BUNDLE, (err) => {
+        if (err) {
+          if (__DEV__) console.warn(`[AudioEngine] failed to load ambient loop ${path}:`, err);
+          this._ambientLoop = null;
+          return;
+        }
+        if (this._ambientLoop) {
+          this._ambientLoop.setVolume(effectiveVolume);
+          this._ambientLoop.setNumberOfLoops(-1);
+          this._ambientLoop.play((success) => {
+            if (!success) {
+              if (__DEV__) console.warn('[AudioEngine] ambient loop playback stopped unexpectedly');
+            }
+          });
+        }
+      });
+    } catch (err) {
+      if (__DEV__) console.warn('[AudioEngine] _startAmbientLoop failed (non-fatal):', err);
+    }
+  }
+
+  /**
+   * Fades out the ambient loop over the given duration, then stops and releases it.
+   */
+  private _fadeOutAmbientLoop(durationMs: number): void {
+    try {
+      if (!this._ambientLoop) {
+        return;
+      }
+      const loop = this._ambientLoop;
+      const startVolume = loop.getVolume();
+      const steps = Math.max(1, Math.floor(durationMs / 16));
+      const stepSize = startVolume / steps;
+      let step = 0;
+
+      const timerId = setInterval(() => {
+        step++;
+        if (step >= steps) {
+          clearInterval(timerId);
+          loop.stop();
+          loop.release();
+          if (this._ambientLoop === loop) {
+            this._ambientLoop = null;
+          }
+        } else {
+          loop.setVolume(Math.max(0, startVolume - stepSize * step));
+        }
+      }, 16);
+    } catch (err) {
+      if (__DEV__) console.warn('[AudioEngine] _fadeOutAmbientLoop failed (non-fatal):', err);
+    }
+  }
+
+  /**
+   * Immediately stops and releases the ambient loop.
+   */
+  private _stopAmbientLoop(): void {
+    try {
+      if (this._ambientLoop) {
+        this._ambientLoop.stop();
+        this._ambientLoop.release();
+        this._ambientLoop = null;
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('[AudioEngine] _stopAmbientLoop failed (non-fatal):', err);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Sub-manager accessors
+  // -------------------------------------------------------------------------
+
+  /** Returns the SFXManager instance for direct SFX control. */
+  getSFXManager(): SFXManager {
+    return this._sfxManager;
+  }
+
+  /** Returns the MusicLayerManager instance for direct stem control. */
+  getMusicLayerManager(): MusicLayerManager {
+    return this._musicLayerManager;
   }
 
   /**

@@ -1,9 +1,10 @@
 /**
  * MusicLayerManager — stem-based adaptive music layer
  *
- * Manages the underlying track player for adaptive music stems. Stem switching
- * is handled exclusively through volume changes — stems are preloaded for a
- * theme and then faded in/out rather than being loaded and unloaded on the fly.
+ * Manages the underlying audio player for adaptive music stems using
+ * react-native-sound. Stem switching is handled exclusively through volume
+ * changes -- stems are preloaded for a theme and then faded in/out rather
+ * than being loaded and unloaded on the fly.
  *
  * For each theme, stem tracks are stored at:
  *   assets/sounds/music/{themeId}/{stemName}.mp3
@@ -16,18 +17,19 @@
  *   counter   — counter-melody / harmony layer
  *   intensity — high-tension escalation layer
  *
- * Platform audio session configuration:
- *   iOS     : AVAudioSession category .playback with .duckOthers option.
- *             Configured via TrackPlayer.setupPlayer() capabilities.
- *   Android : AudioFocusRequest(AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK).
- *             Configured automatically by react-native-track-player when
- *             `capabilities` and `compactCapabilities` are set in setup.
+ * Each stem is an independent looping Sound instance. All six stems play
+ * simultaneously; volume controls determine which layers are audible.
  *
  * All native audio API calls are wrapped in try/catch for graceful degradation
- * in test environments where react-native-track-player is unavailable.
+ * in test environments where react-native-sound is unavailable.
  *
  * Requirements: 14.2, 8.1
  */
+
+import Sound from 'react-native-sound';
+
+// Enable playback in silence mode on iOS
+Sound.setCategory('Playback');
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,6 +57,8 @@ export interface MusicStemConfig {
 interface StemTrackState {
   /** Whether the stem track has been loaded into the player. */
   loaded: boolean;
+  /** The react-native-sound instance for this stem (null until loaded). */
+  sound: Sound | null;
   /** Current volume (0.0 – 1.0). */
   currentVolume: number;
   /** Any pending fade timer handle. */
@@ -76,11 +80,29 @@ const FADE_STEP_INTERVAL_MS = 16; // ~60 fps
 // ---------------------------------------------------------------------------
 
 /**
+ * Detect whether we are running on Android. Guarded to avoid crashing in
+ * test environments that do not have react-native fully mocked.
+ */
+let _isAndroid = false;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+  const { Platform } = require('react-native') as { Platform: { OS: string } };
+  _isAndroid = Platform.OS === 'android';
+} catch {
+  // Not in a React Native environment — default to iOS paths
+}
+
+/**
  * Builds the asset path for a given theme + stem combination.
- * Placeholder path — replace with asset resolution logic when files are available.
+ *
+ *   iOS     : 'music/{themeId}/{stemName}.mp3' (resolved from MAIN_BUNDLE)
+ *   Android : 'music_{themeId}_{stemName}' (flat res/raw resource name, no extension)
  */
 function buildStemPath(themeId: string, stemName: StemName): string {
-  return `assets/sounds/music/${themeId}/${stemName}.mp3`;
+  if (_isAndroid) {
+    return `music_${themeId}_${stemName}`;
+  }
+  return `music/${themeId}/${stemName}.mp3`;
 }
 
 /** Clamps a value to [0, 1]. */
@@ -96,12 +118,9 @@ function clamp(v: number): number {
  * MusicLayerManager
  *
  * Manages stem-based adaptive music mixing for the Water Ring Puzzle Game.
- * All methods that interact with the native audio layer are documented no-ops
- * until react-native-track-player is configured and audio assets are available.
+ * Each stem is a looping react-native-sound instance controlled via volume fades.
  *
  * Requirements: 14.2 (stem activation state machine), 8.1 (audio feature folder)
- *
- * TODO: Wire the TODO sections to react-native-track-player once assets land.
  */
 export class MusicLayerManager {
   private _initialized = false;
@@ -113,34 +132,13 @@ export class MusicLayerManager {
   // ---------------------------------------------------------------------------
 
   /**
-   * Initializes the track player with the required capabilities.
+   * Initializes the music layer manager.
    *
-   * Platform configuration:
-   *   iOS     : AVAudioSession category .playback with .duckOthers
-   *   Android : AudioFocusRequest(AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-   *
-   * Both platforms are configured automatically when TrackPlayer.setupPlayer()
-   * is called with the capability options below.
+   * react-native-sound handles audio session configuration via
+   * Sound.setCategory('Playback') at module load time. This method
+   * simply marks the manager as ready for use.
    *
    * Requirements: 14.5 (platform audio session duck external audio)
-   *
-   * TODO: Uncomment the TrackPlayer setup when react-native-track-player is linked:
-   * ```typescript
-   * import TrackPlayer, { Capability, AppKilledPlaybackBehavior } from 'react-native-track-player';
-   *
-   * await TrackPlayer.setupPlayer({
-   *   autoHandleInterruptions: true,
-   * });
-   * await TrackPlayer.updateOptions({
-   *   android: {
-   *     appKilledPlaybackBehavior: AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
-   *   },
-   *   capabilities: [Capability.Play, Capability.Pause, Capability.Stop],
-   *   compactCapabilities: [Capability.Play, Capability.Pause],
-   *   // duckOthers is implied by AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK on Android
-   *   // and AVAudioSession.duckOthers on iOS via the TrackPlayer bridge.
-   * });
-   * ```
    */
   async initialize(): Promise<void> {
     try {
@@ -148,13 +146,12 @@ export class MusicLayerManager {
         return;
       }
 
-      // TODO: call TrackPlayer.setupPlayer() with capabilities as documented above
-      // when react-native-track-player is linked and audio assets are available.
-
+      // Sound.setCategory('Playback') is called at module scope above.
+      // No additional async setup is needed for react-native-sound.
       this._initialized = true;
     } catch (err) {
       // Graceful degradation — audio unavailable but game continues normally.
-      console.warn('[MusicLayerManager] initialize failed (non-fatal):', err);
+      if (__DEV__) console.warn('[MusicLayerManager] initialize failed (non-fatal):', err);
     }
   }
 
@@ -163,26 +160,12 @@ export class MusicLayerManager {
   // ---------------------------------------------------------------------------
 
   /**
-   * Preloads all six stem tracks for the given theme into the player queue.
-   * Tracks are loaded at volume 0 so they are silent until explicitly faded in.
+   * Preloads all six stem tracks for the given theme.
+   * Tracks are loaded at volume 0 and set to loop. They begin playing
+   * immediately (silently) so that all stems stay in sync.
    *
    * Theme directory: assets/sounds/music/{themeId}/
    * Files: base.mp3, texture.mp3, rhythm.mp3, melody.mp3, counter.mp3, intensity.mp3
-   *
-   * TODO: When assets are available, implement as:
-   * ```typescript
-   * await TrackPlayer.reset();
-   * const tracks = STEM_NAMES.map((stemName) => ({
-   *   id: `${themeId}_${stemName}`,
-   *   url: buildStemPath(themeId, stemName),
-   *   title: stemName,
-   *   artist: 'Water Ring Puzzle',
-   *   volume: 0,
-   *   isLiveStream: false,
-   * }));
-   * await TrackPlayer.add(tracks);
-   * await TrackPlayer.play();
-   * ```
    */
   async loadTheme(themeId: string): Promise<void> {
     try {
@@ -190,25 +173,51 @@ export class MusicLayerManager {
         await this.initialize();
       }
 
-      // Build stem state map for new theme
+      // Release any previously loaded stems
+      this._releaseAllSounds();
+
       const newStates = new Map<string, StemTrackState>();
+      const loadPromises: Promise<void>[] = [];
+
       for (const stemName of STEM_NAMES) {
         const path = buildStemPath(themeId, stemName);
-        // TODO: await TrackPlayer track preload for path when assets available
-        void path;
-        newStates.set(stemName, {
-          loaded: false, // will be true after TrackPlayer.add() succeeds
+        const state: StemTrackState = {
+          loaded: false,
+          sound: null,
           currentVolume: 0,
           fadeTimerId: null,
-        });
+        };
+        newStates.set(stemName, state);
+
+        loadPromises.push(
+          new Promise<void>((resolve) => {
+            const sound = new Sound(path, Sound.MAIN_BUNDLE, (err) => {
+              if (err) {
+                if (__DEV__) console.warn(`[MusicLayerManager] failed to load stem ${stemName} from ${path}:`, err);
+                resolve();
+                return;
+              }
+              sound.setVolume(0);
+              sound.setNumberOfLoops(-1); // loop indefinitely
+              state.sound = sound;
+              state.loaded = true;
+              // Start playing at volume 0 so all stems stay in sync
+              sound.play((success) => {
+                if (!success) {
+                  if (__DEV__) console.warn(`[MusicLayerManager] stem ${stemName} playback stopped unexpectedly`);
+                }
+              });
+              resolve();
+            });
+          }),
+        );
       }
 
+      await Promise.all(loadPromises);
       this._stemStates = newStates;
-      // Active theme set after tracks are successfully enqueued
-      // TODO: set after TrackPlayer.add() resolves
       this._activeThemeId = themeId;
     } catch (err) {
-      console.warn('[MusicLayerManager] loadTheme failed (non-fatal):', err);
+      if (__DEV__) console.warn('[MusicLayerManager] loadTheme failed (non-fatal):', err);
     }
   }
 
@@ -229,12 +238,7 @@ export class MusicLayerManager {
    *
    * Implemented as a step-based linear fade using setInterval (safe in both
    * RN and test environments). When fadeDurationMs is 0 the change is immediate.
-   *
-   * TODO: Replace interval-based fade with TrackPlayer's native volume fade API
-   * when it is available in the linked version, e.g.:
-   * ```typescript
-   * await TrackPlayer.setVolume(effectiveVolume); // per-track index
-   * ```
+   * Each step applies the volume to the underlying react-native-sound instance.
    */
   setStemVolume(stemName: string, volume: number, fadeDurationMs: number): void {
     try {
@@ -249,7 +253,9 @@ export class MusicLayerManager {
 
       if (fadeDurationMs <= 0) {
         state.currentVolume = target;
-        // TODO: TrackPlayer.setVolumeForTrack(stemIndex, target) when linked
+        if (state.sound) {
+          state.sound.setVolume(target);
+        }
         return;
       }
 
@@ -263,8 +269,9 @@ export class MusicLayerManager {
         step++;
         const current = step >= steps ? target : clamp(start + stepSize * step);
         state.currentVolume = current;
-
-        // TODO: TrackPlayer.setVolumeForTrack(stemIndex, current) when linked
+        if (state.sound) {
+          state.sound.setVolume(current);
+        }
 
         if (step >= steps) {
           clearInterval(state.fadeTimerId!);
@@ -272,7 +279,7 @@ export class MusicLayerManager {
         }
       }, FADE_STEP_INTERVAL_MS);
     } catch (err) {
-      console.warn('[MusicLayerManager] setStemVolume failed (non-fatal):', err);
+      if (__DEV__) console.warn('[MusicLayerManager] setStemVolume failed (non-fatal):', err);
     }
   }
 
@@ -289,7 +296,7 @@ export class MusicLayerManager {
         this.setStemVolume(stemName, volume, fadeDurationMs);
       }
     } catch (err) {
-      console.warn('[MusicLayerManager] setAllStemsVolume failed (non-fatal):', err);
+      if (__DEV__) console.warn('[MusicLayerManager] setAllStemsVolume failed (non-fatal):', err);
     }
   }
 
@@ -301,26 +308,9 @@ export class MusicLayerManager {
    * Crossfades from the current theme to a new theme over the given duration.
    *
    * Strategy:
-   *  1. Load the new theme's tracks at volume 0
-   *  2. Simultaneously fade out all current stems and fade in the new theme's base
-   *  3. Update the active theme ID on completion
-   *
-   * Since tracks are not yet real (no audio assets), this is a documented no-op
-   * that updates internal state to reflect the target theme.
-   *
-   * TODO: Full crossfade implementation when TrackPlayer + assets are available:
-   * ```typescript
-   * // 1. Load new theme tracks alongside current (two separate queues or a dual-player setup)
-   * await this.loadTheme(newThemeId);            // loads at volume 0
-   * this.setAllStemsVolume({ base: 0, texture: 0, rhythm: 0,
-   *                          melody: 0, counter: 0, intensity: 0 }, durationMs);
-   * // 2. Fade in new theme base + texture
-   * this.setStemVolume('base', 1.0, durationMs);
-   * this.setStemVolume('texture', 0.8, durationMs);
-   * // 3. After fade completes, clean up old theme tracks
-   * await new Promise(resolve => setTimeout(resolve, durationMs));
-   * this.setThemeId(newThemeId);
-   * ```
+   *  1. Fade out all current stems over durationMs
+   *  2. Release old sounds, load new theme at volume 0
+   *  3. Fade in new theme's base + texture stems
    */
   async crossfadeToTheme(newThemeId: string, durationMs: number): Promise<void> {
     try {
@@ -337,12 +327,14 @@ export class MusicLayerManager {
       // Wait for fade-out before loading new theme
       await this._delay(durationMs);
 
-      // Load and initialize the new theme
+      // Load and initialize the new theme (releases old stems internally)
       await this.loadTheme(newThemeId);
 
-      // TODO: Fade in base + texture of the new theme after tracks are loaded
+      // Fade in base + texture of the new theme
+      this.setStemVolume('base', 1.0, durationMs);
+      this.setStemVolume('texture', 0.8, durationMs);
     } catch (err) {
-      console.warn('[MusicLayerManager] crossfadeToTheme failed (non-fatal):', err);
+      if (__DEV__) console.warn('[MusicLayerManager] crossfadeToTheme failed (non-fatal):', err);
     }
   }
 
@@ -351,25 +343,14 @@ export class MusicLayerManager {
   // ---------------------------------------------------------------------------
 
   /**
-   * Stops all stem playback and resets internal state.
-   *
-   * TODO: Add `await TrackPlayer.reset()` when TrackPlayer is linked.
+   * Stops all stem playback, releases sound resources, and resets internal state.
    */
   stopAll(): void {
     try {
-      // Cancel all pending fades
-      for (const state of this._stemStates.values()) {
-        if (state.fadeTimerId !== null) {
-          clearInterval(state.fadeTimerId);
-          state.fadeTimerId = null;
-        }
-        state.currentVolume = 0;
-      }
-
+      this._releaseAllSounds();
       this._activeThemeId = null;
-      // TODO: await TrackPlayer.reset() when linked
     } catch (err) {
-      console.warn('[MusicLayerManager] stopAll failed (non-fatal):', err);
+      if (__DEV__) console.warn('[MusicLayerManager] stopAll failed (non-fatal):', err);
     }
   }
 
@@ -405,10 +386,34 @@ export class MusicLayerManager {
   private _getOrCreateStemState(stemName: string): StemTrackState {
     let state = this._stemStates.get(stemName);
     if (state === undefined) {
-      state = { loaded: false, currentVolume: 0, fadeTimerId: null };
+      state = { loaded: false, sound: null, currentVolume: 0, fadeTimerId: null };
       this._stemStates.set(stemName, state);
     }
     return state;
+  }
+
+  /**
+   * Stops, releases, and clears all loaded Sound instances and their fade timers.
+   */
+  private _releaseAllSounds(): void {
+    for (const state of this._stemStates.values()) {
+      if (state.fadeTimerId !== null) {
+        clearInterval(state.fadeTimerId);
+        state.fadeTimerId = null;
+      }
+      if (state.sound) {
+        try {
+          state.sound.stop();
+          state.sound.release();
+        } catch {
+          // Individual release failure is non-fatal
+        }
+        state.sound = null;
+      }
+      state.loaded = false;
+      state.currentVolume = 0;
+    }
+    this._stemStates.clear();
   }
 
   /**
