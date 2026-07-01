@@ -23,6 +23,7 @@ const config = {
     sourceExts: [...defaultConfig.resolver.sourceExts],
     // Path aliases — mirrors tsconfig.json compilerOptions.paths
     extraNodeModules: {
+      '@': path.resolve(__dirname, 'src'),
       '@app': path.resolve(__dirname, 'src/app'),
       '@components': path.resolve(__dirname, 'src/components'),
       '@features': path.resolve(__dirname, 'src/features'),

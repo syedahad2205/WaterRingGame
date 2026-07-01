@@ -40,3 +40,7 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
+
+# Android API 35 classes referenced by play-services-ads but not present on compileSdk 34
+-dontwarn android.media.LoudnessCodecController$OnLoudnessCodecUpdateListener
+-dontwarn android.media.LoudnessCodecController

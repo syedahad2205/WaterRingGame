@@ -21,3 +21,22 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+// The React Native Gradle Plugin unconditionally adds the Sonatype snapshots repo to
+// all subprojects for nightly/snapshot builds. For stable release builds, Gradle 8.x
+// treats a 504 from Sonatype as a fatal resolution failure rather than falling through
+// to the next repository (google()). Restrict the Sonatype repo to snapshot-only artifacts
+// so Gradle skips it for stable dependencies like play-services-ads.
+allprojects {
+    repositories {
+        all { ArtifactRepository repo ->
+            if (repo instanceof MavenArtifactRepository) {
+                if (repo.url.toString().contains('oss.sonatype.org/content/repositories/snapshots')) {
+                    repo.mavenContent { MavenRepositoryContentDescriptor content ->
+                        content.snapshotsOnly()
+                    }
+                }
+            }
+        }
+    }
+}
